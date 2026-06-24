@@ -703,13 +703,16 @@ class ResilientDatabase {
     
     this.isGoogleSheets = !!(this.email && this.privateKey && this.spreadsheetId);
     this.fallbackMode = false;
+    
+    // Instantiated exactly once at startup
+    this.mockAdapter = new MockDatabaseAdapter();
 
     if (this.isGoogleSheets) {
       console.log("Database Mode: Attempting Google Sheets Connection...");
       this.adapter = new GoogleSheetsDatabaseAdapter(this.email, this.privateKey, this.spreadsheetId);
     } else {
       console.log("Database Mode: LOCAL MOCK JSON FILE ACTIVE (No Credentials Provided)");
-      this.adapter = new MockDatabaseAdapter();
+      this.adapter = this.mockAdapter;
     }
   }
 
@@ -721,7 +724,7 @@ class ResilientDatabase {
         console.error("⚠️ GOOGLE SHEETS CONNECTION FAILED. GRACEFULLY FALLING BACK TO LOCAL MOCK DB!");
         console.error("Error Detail:", error.message);
         this.fallbackMode = true;
-        this.adapter = new MockDatabaseAdapter();
+        this.adapter = this.mockAdapter;
         return await operation(this.adapter);
       }
     } else {
