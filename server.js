@@ -32,16 +32,11 @@ function invalidateCache() {
 app.get('/api/config', async (req, res) => {
   try {
     const db = getDB();
-    const isGoogleSheets = !!(
-      process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL &&
-      process.env.GOOGLE_PRIVATE_KEY &&
-      process.env.SPREADSHEET_ID
-    );
     const dbConfig = await db.getConfig();
     res.json({
       user1Name: dbConfig.user1Name || process.env.USER1_NAME || "User 1",
       user2Name: dbConfig.user2Name || process.env.USER2_NAME || "User 2",
-      dbMode: isGoogleSheets ? "Google Sheets" : "Local Mock Database"
+      dbMode: db.getMode()
     });
   } catch (error) {
     console.error("Error fetching config:", error);

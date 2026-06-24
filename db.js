@@ -692,23 +692,117 @@ class GoogleSheetsDatabaseAdapter {
 }
 
 // ----------------------------------------------------
+// Resilient Database Wrapper (Graceful Sheets Fallback)
+// ----------------------------------------------------
+class ResilientDatabase {
+  constructor() {
+    this.email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
+    this.privateKey = process.env.GOOGLE_PRIVATE_KEY;
+    this.spreadsheetId = process.env.SPREADSHEET_ID;
+    
+    this.isGoogleSheets = !!(this.email && this.privateKey && this.spreadsheetId);
+    this.fallbackMode = false;
+
+    if (this.isGoogleSheets) {
+      console.log("Database Mode: Attempting Google Sheets Connection...");
+      this.adapter = new GoogleSheetsDatabaseAdapter(this.email, this.privateKey, this.spreadsheetId);
+    } else {
+      console.log("Database Mode: LOCAL MOCK JSON FILE ACTIVE (No Credentials Provided)");
+      this.adapter = new MockDatabaseAdapter();
+    }
+  }
+
+  async executeWithFallback(operation) {
+    if (this.isGoogleSheets && !this.fallbackMode) {
+      try {
+        return await operation(this.adapter);
+      } catch (error) {
+        console.error("⚠️ GOOGLE SHEETS CONNECTION FAILED. GRACEFULLY FALLING BACK TO LOCAL MOCK DB!");
+        console.error("Error Detail:", error.message);
+        this.fallbackMode = true;
+        this.adapter = new MockDatabaseAdapter();
+        return await operation(this.adapter);
+      }
+    } else {
+      return await operation(this.adapter);
+    }
+  }
+
+  getMode() {
+    if (this.isGoogleSheets && !this.fallbackMode) {
+      return "Google Sheets";
+    }
+    if (this.isGoogleSheets && this.fallbackMode) {
+      return "Local Mock Database (Sheets Connection Failed)";
+    }
+    return "Local Mock Database";
+  }
+
+  async getExpenseTypes() {
+    return this.executeWithFallback(db => db.getExpenseTypes());
+  }
+
+  async saveExpenseType(name) {
+    return this.executeWithFallback(db => db.saveExpenseType(name));
+  }
+
+  async deleteExpenseType(name) {
+    return this.executeWithFallback(db => db.deleteExpenseType(name));
+  }
+
+  async getTransactions() {
+    return this.executeWithFallback(db => db.getTransactions());
+  }
+
+  async saveTransaction(tx) {
+    return this.executeWithFallback(db => db.saveTransaction(tx));
+  }
+
+  async updateTransaction(id, tx) {
+    return this.executeWithFallback(db => db.updateTransaction(id, tx));
+  }
+
+  async deleteTransaction(id) {
+    return this.executeWithFallback(db => db.deleteTransaction(id));
+  }
+
+  async getBudgets() {
+    return this.executeWithFallback(db => db.getBudgets());
+  }
+
+  async saveBudget(budget) {
+    return this.executeWithFallback(db => db.saveBudget(budget));
+  }
+
+  async getSettlements() {
+    return this.executeWithFallback(db => db.getSettlements());
+  }
+
+  async saveSettlement(settlement) {
+    return this.executeWithFallback(db => db.saveSettlement(settlement));
+  }
+
+  async settleMonth(yearMonth, fromUser, toUser, amount, date) {
+    return this.executeWithFallback(db => db.settleMonth(yearMonth, fromUser, toUser, amount, date));
+  }
+
+  async getConfig() {
+    return this.executeWithFallback(db => db.getConfig());
+  }
+
+  async saveConfig(config) {
+    return this.executeWithFallback(db => db.saveConfig(config));
+  }
+}
+
+// ----------------------------------------------------
 // Database Factory
 // ----------------------------------------------------
 let dbInstance = null;
 
 function getDB() {
-  if (dbInstance) return dbInstance;
-
-  const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-  const privateKey = process.env.GOOGLE_PRIVATE_KEY;
-  const spreadsheetId = process.env.SPREADSHEET_ID;
-
-  if (email && privateKey && spreadsheetId) {
-    console.log("Database Mode: GOOGLE SHEETS ACTIVE");
-    dbInstance = new GoogleSheetsDatabaseAdapter(email, privateKey, spreadsheetId);
-  } else {
-    console.log("Database Mode: LOCAL MOCK JSON FILE ACTIVE");
-    dbInstance = new MockDatabaseAdapter();
+  if (!dbInstance) {
+    dbInstance = new ResilientDatabase();
   }
   return dbInstance;
 }
