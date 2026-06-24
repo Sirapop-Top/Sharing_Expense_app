@@ -77,15 +77,16 @@ function initMockDb() {
 class MockDatabaseAdapter {
   constructor() {
     initMockDb();
+    const data = fs.readFileSync(MOCK_DB_FILE, 'utf8');
+    this.cacheData = JSON.parse(data);
   }
 
   async read() {
-    initMockDb();
-    const data = fs.readFileSync(MOCK_DB_FILE, 'utf8');
-    return JSON.parse(data);
+    return this.cacheData;
   }
 
   async write(data) {
+    this.cacheData = data;
     fs.writeFileSync(MOCK_DB_FILE, JSON.stringify(data, null, 2), 'utf8');
   }
 
