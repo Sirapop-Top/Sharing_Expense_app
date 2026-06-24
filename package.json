@@ -1,0 +1,26 @@
+{
+  "name": "sharing-expense-app",
+  "version": "1.0.0",
+  "description": "A highly efficient 2-person expense sharing web application with Google Sheets integration and mock fallback.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "test": "node scripts/verify.js",
+    "push": "node scripts/push.js"
+  },
+  "keywords": [
+    "expense-sharing",
+    "google-sheets",
+    "finance",
+    "tracker"
+  ],
+  "author": "Antigravity",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "googleapis": "*"
+  }
+}
