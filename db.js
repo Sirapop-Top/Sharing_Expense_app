@@ -701,14 +701,123 @@ class GoogleSheetsDatabaseAdapter {
 }
 
 // ----------------------------------------------------
-// Resilient Database Wrapper (Graceful Sheets Fallback)
+// Google Apps Script Database Adapter
+// ----------------------------------------------------
+class GoogleAppsScriptDatabaseAdapter {
+  constructor(url) {
+    this.url = url;
+  }
+
+  async makeRequest(action, payload = {}) {
+    const isPost = payload && Object.keys(payload).length > 0;
+    const requestUrl = `${this.url}${this.url.includes('?') ? '&' : '?'}action=${action}`;
+    
+    const options = {
+      method: isPost ? 'POST' : 'GET',
+      headers: { 'Accept': 'application/json' }
+    };
+    
+    if (isPost) {
+      options.headers['Content-Type'] = 'application/json';
+      options.body = JSON.stringify({ action: action, ...payload });
+    }
+
+    const res = await fetch(requestUrl, options);
+    if (!res.ok) {
+      throw new Error(`Apps Script returned status code ${res.status}: ${res.statusText}`);
+    }
+    
+    const text = await res.text();
+    try {
+      return JSON.parse(text);
+    } catch (e) {
+      throw new Error(`Failed to parse Apps Script JSON response: ${text.substring(0, 100)}`);
+    }
+  }
+
+  async getExpenseTypes() {
+    return await this.makeRequest('getExpenseTypes');
+  }
+
+  async saveExpenseType(name) {
+    await this.makeRequest('saveExpenseType', { name: name });
+    return name;
+  }
+
+  async deleteExpenseType(name) {
+    const res = await this.makeRequest('deleteExpenseType', { name: name });
+    return res.success;
+  }
+
+  async getTransactions() {
+    return await this.makeRequest('getTransactions');
+  }
+
+  async saveTransaction(tx) {
+    await this.makeRequest('saveTransaction', { tx: tx });
+    return tx;
+  }
+
+  async updateTransaction(id, tx) {
+    const res = await this.makeRequest('updateTransaction', { id: id, tx: tx });
+    return tx;
+  }
+
+  async deleteTransaction(id) {
+    const res = await this.makeRequest('deleteTransaction', { id: id });
+    return res.success;
+  }
+
+  async getBudgets() {
+    return await this.makeRequest('getBudgets');
+  }
+
+  async saveBudget(budget) {
+    await this.makeRequest('saveBudget', { budget: budget });
+    return budget;
+  }
+
+  async getSettlements() {
+    return await this.makeRequest('getSettlements');
+  }
+
+  async saveSettlement(settlement) {
+    await this.makeRequest('saveSettlement', { settlement: settlement });
+    return settlement;
+  }
+
+  async settleMonth(yearMonth, fromUser, toUser, amount, date) {
+    const res = await this.makeRequest('settleMonth', {
+      yearMonth: yearMonth,
+      fromUser: fromUser,
+      toUser: toUser,
+      amount: amount,
+      date: date
+    });
+    return { count: res.count, settlement: res.settlement };
+  }
+
+  async getConfig() {
+    return await this.makeRequest('getConfig');
+  }
+
+  async saveConfig(config) {
+    await this.makeRequest('saveConfig', { config: config });
+    return config;
+  }
+}
+
+// ----------------------------------------------------
+// Resilient Database Wrapper (Graceful Fallback)
 // ----------------------------------------------------
 class ResilientDatabase {
   constructor() {
     this.email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
     this.privateKey = process.env.GOOGLE_PRIVATE_KEY;
     this.spreadsheetId = process.env.SPREADSHEET_ID;
+    this.appsScriptUrl = process.env.APPS_SCRIPT_URL;
     
+    this.isAppsScript = !!this.appsScriptUrl;
     this.isGoogleSheets = !!(this.email && this.privateKey && this.spreadsheetId);
     this.fallbackMode = false;
     this.connectionError = null;
@@ -716,7 +825,10 @@ class ResilientDatabase {
     // Instantiated exactly once at startup
     this.mockAdapter = new MockDatabaseAdapter();
 
-    if (this.isGoogleSheets) {
+    if (this.isAppsScript) {
+      console.log("Database Mode: GOOGLE APPS SCRIPT WEB APP ACTIVE");
+      this.adapter = new GoogleAppsScriptDatabaseAdapter(this.appsScriptUrl);
+    } else if (this.isGoogleSheets) {
       console.log("Database Mode: Attempting Google Sheets Connection...");
       this.adapter = new GoogleSheetsDatabaseAdapter(this.email, this.privateKey, this.spreadsheetId);
     } else {
@@ -726,7 +838,18 @@ class ResilientDatabase {
   }
 
   async executeWithFallback(operation) {
-    if (this.isGoogleSheets && !this.fallbackMode) {
+    if (this.isAppsScript && !this.fallbackMode) {
+      try {
+        return await operation(this.adapter);
+      } catch (error) {
+        console.error("⚠️ GOOGLE APPS SCRIPT WEB APP CONNECTION FAILED. GRACEFULLY FALLING BACK TO LOCAL MOCK DB!");
+        console.error("Error Detail:", error.message);
+        this.connectionError = error.message;
+        this.fallbackMode = true;
+        this.adapter = this.mockAdapter;
+        return await operation(this.adapter);
+      }
+    } else if (this.isGoogleSheets && !this.fallbackMode) {
       try {
         return await operation(this.adapter);
       } catch (error) {
@@ -747,6 +870,12 @@ class ResilientDatabase {
   }
 
   getMode() {
+    if (this.isAppsScript && !this.fallbackMode) {
+      return "Google Sheets (Apps Script)";
+    }
+    if (this.isAppsScript && this.fallbackMode) {
+      return "Local Mock Database (Apps Script Connection Failed)";
+    }
     if (this.isGoogleSheets && !this.fallbackMode) {
       return "Google Sheets";
     }
