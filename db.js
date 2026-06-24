@@ -226,8 +226,16 @@ class GoogleSheetsDatabaseAdapter {
   constructor(email, privateKey, spreadsheetId) {
     this.spreadsheetId = spreadsheetId;
     
-    // Setup Auth
-    const formattedPrivateKey = privateKey.replace(/\\n/g, '\n');
+    // Robust key formatting: remove outer quotes and replace escaped newlines
+    let cleanKey = privateKey.trim();
+    if (cleanKey.startsWith('"') && cleanKey.endsWith('"')) {
+      cleanKey = cleanKey.substring(1, cleanKey.length - 1);
+    }
+    if (cleanKey.startsWith("'") && cleanKey.endsWith("'")) {
+      cleanKey = cleanKey.substring(1, cleanKey.length - 1);
+    }
+    const formattedPrivateKey = cleanKey.replace(/\\n/g, '\n');
+
     this.auth = new google.auth.JWT(
       email,
       null,
@@ -703,6 +711,7 @@ class ResilientDatabase {
     
     this.isGoogleSheets = !!(this.email && this.privateKey && this.spreadsheetId);
     this.fallbackMode = false;
+    this.connectionError = null;
     
     // Instantiated exactly once at startup
     this.mockAdapter = new MockDatabaseAdapter();
@@ -723,6 +732,7 @@ class ResilientDatabase {
       } catch (error) {
         console.error("⚠️ GOOGLE SHEETS CONNECTION FAILED. GRACEFULLY FALLING BACK TO LOCAL MOCK DB!");
         console.error("Error Detail:", error.message);
+        this.connectionError = error.message;
         this.fallbackMode = true;
         this.adapter = this.mockAdapter;
         return await operation(this.adapter);
@@ -730,6 +740,10 @@ class ResilientDatabase {
     } else {
       return await operation(this.adapter);
     }
+  }
+
+  getConnectionError() {
+    return this.connectionError;
   }
 
   getMode() {

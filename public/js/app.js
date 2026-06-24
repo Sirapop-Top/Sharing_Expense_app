@@ -341,10 +341,26 @@ function updateUIElements() {
   // DB Badge styling
   const dot = elements.dbModeIndicator.querySelector('.status-dot');
   const txt = elements.dbModeIndicator.querySelector('.mode-text');
-  txt.textContent = state.config.dbMode;
+  
   if (state.config.dbMode === "Google Sheets") {
+    txt.textContent = state.config.dbMode;
+    elements.dbModeIndicator.title = "Connected to Google Sheets successfully.";
+    elements.dbModeIndicator.style.cursor = 'default';
+    elements.dbModeIndicator.onclick = null;
     dot.className = "status-dot green";
   } else {
+    txt.textContent = state.config.dbMode;
+    if (state.config.connectionError) {
+      elements.dbModeIndicator.title = `Click to see details. Connection Error: ${state.config.connectionError}`;
+      elements.dbModeIndicator.style.cursor = 'pointer';
+      elements.dbModeIndicator.onclick = () => {
+        alert(`Google Sheets Connection Error Detail:\n\n${state.config.connectionError}\n\nTroubleshooting tips:\n1. Check that the spreadsheet ID is correct.\n2. Ensure you shared the sheet as "Editor" with the Service Account email.\n3. Make sure the private key is pasted completely and formatted correctly in Render (do not wrap in quotes inside the Render Env form).`);
+      };
+    } else {
+      elements.dbModeIndicator.title = "Running on local Mock Database fallback.";
+      elements.dbModeIndicator.style.cursor = 'default';
+      elements.dbModeIndicator.onclick = null;
+    }
     dot.className = "status-dot amber";
   }
 

@@ -36,7 +36,8 @@ app.get('/api/config', async (req, res) => {
     res.json({
       user1Name: dbConfig.user1Name || process.env.USER1_NAME || "User 1",
       user2Name: dbConfig.user2Name || process.env.USER2_NAME || "User 2",
-      dbMode: db.getMode()
+      dbMode: db.getMode(),
+      connectionError: db.getConnectionError()
     });
   } catch (error) {
     console.error("Error fetching config:", error);
