@@ -66,6 +66,33 @@ function jsonResponse(data) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
+function formatDateIso(val) {
+  if (!val) return "";
+  if (val instanceof Date) {
+    try {
+      return Utilities.formatDate(val, SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone(), "yyyy-MM-dd");
+    } catch (e) {
+      return Utilities.formatDate(val, Session.getScriptTimeZone(), "yyyy-MM-dd");
+    }
+  }
+  var str = String(val).trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
+    return str.substring(0, 10);
+  }
+  try {
+    var d = new Date(str);
+    if (!isNaN(d.getTime())) {
+      try {
+        return Utilities.formatDate(d, SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone(), "yyyy-MM-dd");
+      } catch (e) {
+        return Utilities.formatDate(d, Session.getScriptTimeZone(), "yyyy-MM-dd");
+      }
+    }
+  } catch (e) {}
+  
+  return str.substring(0, 10);
+}
+
 // ==========================================================
 // DATABASE LOGIC & SCHEMA MANAGEMENT
 // ==========================================================
@@ -161,7 +188,7 @@ function getTransactionsData(ss) {
     if (!rows[i][0]) continue;
     txs.push({
       id: rows[i][0],
-      date: String(rows[i][1]).substring(0, 10) || rows[i][1], // Parse formats
+      date: formatDateIso(rows[i][1]),
       paidBy: rows[i][2],
       amount: parseFloat(rows[i][3]) || 0,
       expenseType: rows[i][4],
@@ -274,7 +301,7 @@ function getSettlementsData(ss) {
       fromUser: rows[i][2],
       toUser: rows[i][3],
       amount: parseFloat(rows[i][4]) || 0,
-      settledDate: String(rows[i][5]).substring(0, 10) || rows[i][5]
+      settledDate: formatDateIso(rows[i][5])
     });
   }
   return sets;
@@ -394,12 +421,7 @@ function migrateHistoryData() {
       }
       
       // 1. Format Date to YYYY-MM-DD
-      var dateStr = "";
-      if (rawDate instanceof Date) {
-        dateStr = Utilities.formatDate(rawDate, Session.getScriptTimeZone(), "yyyy-MM-dd");
-      } else {
-        dateStr = String(rawDate).substring(0, 10);
-      }
+      var dateStr = formatDateIso(rawDate);
       
       // 2. Map Paid By (supports User 1/User 2 or display names like Alex/Sam)
       var rawPaidBy = paidByIdx !== -1 ? String(row[paidByIdx]).trim().toLowerCase() : "";
