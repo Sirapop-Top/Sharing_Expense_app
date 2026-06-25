@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FairShare - 2-Person Expense Sharing</title>
+  <!-- Favicon -->
+  <link rel="icon" type="image/jpeg" href="favicon.jpg">
+  <!-- Google Fonts Outfit & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- App Container -->
+  <div class="app-layout">
+    
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <i data-lucide="scale" class="brand-icon"></i>
+        <span>FairShare</span>
+      </div>
+      
+      <nav class="sidebar-menu">
+        <a href="#" class="menu-item active" data-target="dashboard">
+          <i data-lucide="layout-dashboard"></i>
+          <span>Dashboard</span>
+        </a>
+        <a href="#" class="menu-item" data-target="transactions">
+          <i data-lucide="receipt"></i>
+          <span>Transactions</span>
+        </a>
+        <a href="#" class="menu-item" data-target="budgets">
+          <i data-lucide="wallet"></i>
+          <span>Budgets</span>
+        </a>
+        <a href="#" class="menu-item" data-target="settings">
+          <i data-lucide="settings"></i>
+          <span>Settings</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="db-mode-badge" id="db-mode-indicator">
+          <div class="status-dot green"></div>
+          <span class="mode-text">Mock Database</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      
+      <!-- Top Header Bar -->
+      <header class="top-header">
+        <div class="header-left">
+          <button class="mobile-toggle-btn" id="mobile-sidebar-toggle">
+            <i data-lucide="menu"></i>
+          </button>
+          <h1>Expense Dashboard</h1>
+        </div>
+        
+        <div class="header-right">
+          <!-- Timeframe Selection (Only shown when Dashboard is active) -->
+          <div id="header-dashboard-controls" style="display: flex; gap: 8px;">
+            <select id="dashboard-timeframe" class="form-input-small" style="height: 38px;">
+              <option value="weekly">Weekly View</option>
+              <option value="monthly" selected>Monthly View</option>
+              <option value="annual">Annual View</option>
+            </select>
+          </div>
+
+          <!-- Dynamic Date Picker -->
+          <div class="month-selector-container">
+            <label for="global-picker" id="picker-label-icon"><i data-lucide="calendar"></i></label>
+            <input type="month" id="global-picker" class="month-picker">
+          </div>
+          
+          <!-- Quick Add Button -->
+          <button class="btn btn-primary" id="quick-add-btn">
+            <i data-lucide="plus"></i>
+            <span>Log Expense</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Dynamic Message Alerts -->
+      <div id="net-balance-alert" class="net-balance-alert">
+        <!-- Rendered Dynamically -->
+      </div>
+
+      <!-- PAGE: DASHBOARD -->
+      <section id="page-dashboard" class="page-section active">
+        <!-- Dashboard Summary Grid -->
+        <div class="stats-grid">
+          <div class="stat-card gradient-primary">
+            <div class="stat-header">
+              <span>Total Spending</span>
+              <i data-lucide="trending-up"></i>
+            </div>
+            <div class="stat-value" id="dashboard-total-spent">฿0.00</div>
+            <div class="stat-footer">Cumulative outstanding + settled</div>
+          </div>
+          
+          <div class="stat-card">
+            <div class="stat-header">
+              <span id="user1-paid-label">User 1 Paid</span>
+              <i data-lucide="arrow-up-right" class="color-user1"></i>
+            </div>
+            <div class="stat-value" id="dashboard-user1-paid">฿0.00</div>
+            <div class="stat-footer" id="dashboard-user1-share">Share: ฿0.00</div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-header">
+              <span id="user2-paid-label">User 2 Paid</span>
+              <i data-lucide="arrow-up-right" class="color-user2"></i>
+            </div>
+            <div class="stat-value" id="dashboard-user2-paid">฿0.00</div>
+            <div class="stat-footer" id="dashboard-user2-share">Share: ฿0.00</div>
+          </div>
+
+          <div class="stat-card border-highlight">
+            <div class="stat-header">
+              <span>Outstanding Balance</span>
+              <i data-lucide="arrow-left-right" class="color-outstanding"></i>
+            </div>
+            <div class="stat-value font-large" id="dashboard-net-summary">Calculations...</div>
+            <div class="stat-footer">
+              <button class="btn-link" id="dashboard-settle-link">Settle Month-End</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Visual Analytics Row -->
+        <div class="dashboard-row">
+          <!-- Charts Section -->
+          <div class="dashboard-col card col-8">
+            <h3 class="card-title">Monthly Expense Breakdown</h3>
+            <div class="charts-container">
+              <div class="chart-box">
+                <canvas id="categoryPieChart"></canvas>
+              </div>
+              <div class="chart-box">
+                <canvas id="paidComparisonBarChart"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Budget Overviews -->
+          <div class="dashboard-col card col-4">
+            <div class="card-header-flex">
+              <h3 class="card-title">Category Budgets</h3>
+              <a href="#" class="btn-link-small" id="manage-budgets-link">Edit</a>
+            </div>
+            <div class="budget-progress-container" id="dashboard-budget-list">
+              <!-- Rendered Dynamically -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAGE: TRANSACTIONS -->
+      <section id="page-transactions" class="page-section">
+        <div class="card">
+          <div class="card-header-flex border-bottom">
+            <h2 class="card-title">Expenses Log</h2>
+            <!-- Filters -->
+            <div class="filters-container">
+              <div class="filter-group">
+                <label for="filter-type">Type</label>
+                <select id="filter-type" class="form-input-small">
+                  <option value="All">All Categories</option>
+                  <!-- Options added dynamically -->
+                </select>
+              </div>
+              <div class="filter-group">
+                <label for="filter-paid">Paid By</label>
+                <select id="filter-paid" class="form-input-small">
+                  <option value="All">All Users</option>
+                  <option value="User 1">User 1</option>
+                  <option value="User 2">User 2</option>
+                </select>
+              </div>
+              <div class="filter-group">
+                <label for="filter-status">Status</label>
+                <select id="filter-status" class="form-input-small">
+                  <option value="All">All Statuses</option>
+                  <option value="Outstanding">Outstanding</option>
+                  <option value="Settled">Settled</option>
+                  <option value="Tread">Tread</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Transactions Table -->
+          <div class="table-scroll">
+            <table class="data-table" id="transactions-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Description</th>
+                  <th>Category</th>
+                  <th>Paid By</th>
+                  <th>Amount</th>
+                  <th>Split Shares</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="transactions-list-tbody">
+                <!-- Rendered dynamically -->
+              </tbody>
+            </table>
+            <div class="empty-state" id="transactions-empty-state">
+              <i data-lucide="inbox"></i>
+              <p>No expenses found matching the current selections.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAGE: BUDGETS -->
+      <section id="page-budgets" class="page-section">
+        <div class="card">
+          <div class="card-header-flex border-bottom">
+            <h2 class="card-title">Monthly Budgets</h2>
+            <div class="budget-month-display" id="budget-active-month">June 2026</div>
+          </div>
+          
+          <div class="budget-setup-grid">
+            <div class="budget-editor-form">
+              <h3>Set Category Limit</h3>
+              <form id="budget-form" class="standard-form">
+                <div class="form-group">
+                  <label for="budget-category">Expense Category</label>
+                  <select id="budget-category" class="form-input" required>
+                    <!-- Options loaded dynamically -->
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="budget-amount">Limit Amount (฿)</label>
+                  <input type="number" id="budget-amount" class="form-input" placeholder="0.00" min="0" step="0.01" required>
+                </div>
+                <button type="submit" class="btn btn-primary w-full">Save Budget Limit</button>
+              </form>
+            </div>
+
+            <div class="budget-viewer-panel">
+              <h3>Monthly Budget Status</h3>
+              <div class="budget-viewer-list" id="budgets-details-list">
+                <!-- Rendered dynamically -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAGE: SETTINGS -->
+      <section id="page-settings" class="page-section">
+        <div class="settings-grid">
+          <!-- Categories management -->
+          <div class="card">
+            <div class="card-header-flex border-bottom">
+              <h2 class="card-title">Manage Expense Categories</h2>
+            </div>
+            <div class="settings-padding">
+              <form id="category-add-form" class="inline-form">
+                <input type="text" id="category-new-name" class="form-input" placeholder="New Category Name (e.g. Health)" required>
+                <button type="submit" class="btn btn-primary">Add</button>
+              </form>
+
+              <div class="categories-list-container">
+                <ul class="categories-list" id="settings-categories-list">
+                  <!-- Rendered dynamically -->
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Settlements Log -->
+          <div class="card">
+            <div class="card-header-flex border-bottom">
+              <h2 class="card-title">Settlement Logs</h2>
+            </div>
+            <div class="settings-padding">
+              <div class="settlements-history-list" id="settlements-history-list">
+                <!-- Rendered dynamically -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Customize User Names -->
+          <div class="card col-span-2">
+            <div class="card-header-flex border-bottom">
+              <h2 class="card-title">Customize User Names</h2>
+            </div>
+            <div class="settings-padding">
+              <form id="names-update-form" class="inline-form">
+                <div class="form-group" style="flex: 1;">
+                  <label for="settings-user1-name">User 1 Display Name</label>
+                  <input type="text" id="settings-user1-name" class="form-input" placeholder="e.g. Alex" required>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                  <label for="settings-user2-name">User 2 Display Name</label>
+                  <input type="text" id="settings-user2-name" class="form-input" placeholder="e.g. Sam" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="align-self: flex-end; height: 42px;">Save Names</button>
+              </form>
+            </div>
+          </div>
+          
+          <!-- Customize Google Sheets / Apps Script Connection -->
+          <div class="card col-span-2">
+            <div class="card-header-flex border-bottom">
+              <h2 class="card-title">Direct Google Sheets Connection (Serverless / GitHub Pages)</h2>
+            </div>
+            <div class="settings-padding">
+              <p class="description-text" style="margin-bottom: 12px;">
+                If you are hosting this app statically on <strong>GitHub Pages</strong> (or running it without a local server), you can connect it directly to your Google Sheet. Paste your deployed Google Apps Script Web App URL below:
+              </p>
+              <form id="connection-update-form" class="inline-form" style="gap: 12px; align-items: flex-end;">
+                <div class="form-group" style="flex: 1; min-width: 250px;">
+                  <label for="settings-apps-script-url">Google Apps Script Web App URL</label>
+                  <input type="url" id="settings-apps-script-url" class="form-input" placeholder="https://script.google.com/macros/s/AKfycb.../exec" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="height: 42px;">Connect URL</button>
+                <button type="button" id="btn-disconnect-apps-script" class="btn btn-danger" style="height: 42px; display: none;">Disconnect</button>
+              </form>
+            </div>
+          </div>
+          
+          <!-- System Configuration parameters -->
+          <div class="card col-span-2">
+            <div class="card-header-flex border-bottom">
+              <h2 class="card-title">System & Connection Status</h2>
+            </div>
+            <div class="settings-padding grid-2-col">
+              <div>
+                <h3>Database Properties</h3>
+                <table class="properties-table">
+                  <tr>
+                    <th>Data Adapter</th>
+                    <td id="sys-db-mode">Mock Adapter</td>
+                  </tr>
+                  <tr>
+                    <th>Spreadsheet ID</th>
+                    <td id="sys-sheet-id">1XD7hd5ZTUeNejSs...</td>
+                  </tr>
+                  <tr>
+                    <th>Local Storage State</th>
+                    <td>Connected</td>
+                  </tr>
+                </table>
+              </div>
+
+              <div>
+                <h3>Display Users Configuration</h3>
+                <p class="description-text">Defined via server environment variables (`USER1_NAME`, `USER2_NAME`).</p>
+                <table class="properties-table">
+                  <tr>
+                    <th>User 1 Mapping</th>
+                    <td id="sys-user1-name">Alex</td>
+                  </tr>
+                  <tr>
+                    <th>User 2 Mapping</th>
+                    <td id="sys-user2-name">Sam</td>
+                  </tr>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- MODAL: ADD / EDIT TRANSACTION -->
+  <div class="modal-overlay" id="transaction-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="modal-tx-title">Log Expense</h3>
+        <button class="modal-close-btn" id="modal-tx-close"><i data-lucide="x"></i></button>
+      </div>
+      
+      <form id="transaction-form" class="modal-body standard-form">
+        <!-- Hidden input for editing tx ID -->
+        <input type="hidden" id="tx-id">
+
+        <div class="form-row-2">
+          <div class="form-group">
+            <label for="tx-date">Date</label>
+            <input type="date" id="tx-date" class="form-input" required>
+          </div>
+          <div class="form-group">
+            <label for="tx-paid-by">Paid By</label>
+            <select id="tx-paid-by" class="form-input" required>
+              <option value="User 1" id="opt-user1">User 1</option>
+              <option value="User 2" id="opt-user2">User 2</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row-2">
+          <div class="form-group">
+            <label for="tx-amount">Total Amount (฿)</label>
+            <input type="number" id="tx-amount" class="form-input" placeholder="0.00" min="0.01" step="0.01" required>
+          </div>
+          <div class="form-group">
+            <label for="tx-category">Expense Category</label>
+            <select id="tx-category" class="form-input" required>
+              <!-- Options loaded dynamically -->
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="tx-desc">Description</label>
+          <input type="text" id="tx-desc" class="form-input" placeholder="e.g. Giant Groceries / Electric bill" required>
+        </div>
+
+        <div class="form-row-2">
+          <div class="form-group">
+            <label for="tx-split-ratio">Split Strategy</label>
+            <select id="tx-split-ratio" class="form-input" required>
+              <option value="50:50">Split 50:50 (Divide equally)</option>
+              <option value="Custom">Custom Proportions</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="tx-status">Status</label>
+            <select id="tx-status" class="form-input" required>
+              <option value="Outstanding">Outstanding</option>
+              <option value="Settled">Settled</option>
+              <option value="Tread">Tread</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Custom split values (Only shown if Custom selected) -->
+        <div class="custom-split-container" id="custom-split-fields" style="display: none;">
+          <h4>Specify Custom Shares</h4>
+          <div class="form-row-2">
+            <div class="form-group">
+              <label for="tx-user1-share" id="lbl-user1-share">User 1 Share (฿)</label>
+              <input type="number" id="tx-user1-share" class="form-input" placeholder="0.00" min="0" step="0.01">
+            </div>
+            <div class="form-group">
+              <label for="tx-user2-share" id="lbl-user2-share">User 2 Share (฿)</label>
+              <input type="number" id="tx-user2-share" class="form-input" placeholder="0.00" min="0" step="0.01">
+            </div>
+          </div>
+          <div class="split-validation-alert" id="split-calc-feedback">
+            Sum of shares does not equal total amount.
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="modal-tx-cancel">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="modal-tx-save">Save Transaction</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: BULK SETTLEMENT -->
+  <div class="modal-overlay" id="settlement-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Month-End Settlement Summary</h3>
+        <button class="modal-close-btn" id="modal-settle-close"><i data-lucide="x"></i></button>
+      </div>
+
+      <div class="modal-body">
+        <p class="settlement-month-lead">Settle all outstanding transactions for <strong id="settle-summary-month">June 2026</strong>.</p>
+        
+        <div class="settle-math-summary-box">
+          <div class="settle-sum-row">
+            <span id="settle-summary-user1-paid">User 1 Paid (Outstanding)</span>
+            <span class="value" id="settle-math-user1-paid">฿0.00</span>
+          </div>
+          <div class="settle-sum-row">
+            <span id="settle-summary-user2-paid">User 2 Paid (Outstanding)</span>
+            <span class="value" id="settle-math-user2-paid">฿0.00</span>
+          </div>
+          <hr class="settle-divider">
+          <div class="settle-net-row">
+            <span>Net Settlement Transfer Required</span>
+            <span class="value highlight" id="settle-math-net-transfer">Calculations...</span>
+          </div>
+        </div>
+
+        <div class="settlement-actions-alert">
+          <i data-lucide="info"></i>
+          <p>Clicking "Execute Settle All" will mark all Outstanding items for this month as <strong>Settled</strong> and log a record of this settlement event.</p>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="modal-settle-cancel">Cancel</button>
+          <button type="button" class="btn btn-accent" id="modal-settle-execute">Execute Settle All</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
