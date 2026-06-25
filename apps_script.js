@@ -151,6 +151,16 @@ function ensureSheetsExist(ss) {
           sheet.appendRow([d]);
         });
       }
+      
+      // Set column number formats when creating new sheets
+      if (name === 'Transactions') {
+        sheet.getRange("D2:D").setNumberFormat("#,##0.00");
+        sheet.getRange("G2:H").setNumberFormat("#,##0.00");
+      } else if (name === 'Budgets') {
+        sheet.getRange("C2:C").setNumberFormat("#,##0.00");
+      } else if (name === 'Settlements') {
+        sheet.getRange("E2:E").setNumberFormat("#,##0.00");
+      }
     }
   }
 }
@@ -524,7 +534,52 @@ function migrateHistoryData() {
     }
   });
   
+  // Apply formatting to all columns after migration
+  formatAllColumns();
+  
   Logger.log("🎉 Successfully migrated " + migratedCount + " transactions into the 'Transactions' tab!");
+}
+
+/**
+ * Utility function to format all money/amount columns across all sheets to format x,xxx,xxx.xx
+ */
+function formatAllColumns() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  
+  // Format Transactions sheet
+  var txSheet = ss.getSheetByName('Transactions');
+  if (txSheet) {
+    txSheet.getRange("D2:D").setNumberFormat("#,##0.00");
+    txSheet.getRange("G2:H").setNumberFormat("#,##0.00");
+    Logger.log("Formatted 'Transactions' amount columns D (Amount), G (User 1 Share), and H (User 2 Share).");
+  }
+  
+  // Format Budgets sheet
+  var budgetSheet = ss.getSheetByName('Budgets');
+  if (budgetSheet) {
+    budgetSheet.getRange("C2:C").setNumberFormat("#,##0.00");
+    Logger.log("Formatted 'Budgets' limit column C (BudgetAmount).");
+  }
+  
+  // Format Settlements sheet
+  var settleSheet = ss.getSheetByName('Settlements');
+  if (settleSheet) {
+    settleSheet.getRange("E2:E").setNumberFormat("#,##0.00");
+    Logger.log("Formatted 'Settlements' amount column E (Amount).");
+  }
+  
+  // Format historical sheets
+  var months = ['MAR26', 'APR26', 'MAY26', 'JUN26'];
+  months.forEach(function(month) {
+    var sourceSheet = ss.getSheetByName(month);
+    if (sourceSheet) {
+      sourceSheet.getRange("C2:C").setNumberFormat("#,##0.00");
+      sourceSheet.getRange("E2:E").setNumberFormat("#,##0.00");
+      Logger.log("Formatted '" + month + "' amount columns C (Total cost) and E (Cost per person).");
+    }
+  });
+  
+  Logger.log("🎉 All amount columns formatted successfully!");
 }
 
 
