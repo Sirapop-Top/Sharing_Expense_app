@@ -23,7 +23,8 @@ let paidChartInstance = null;
 // DOM Elements Cache
 const elements = {
   // Navigation
-  menuItems: document.querySelectorAll('.menu-item'),
+  menuItems: document.querySelectorAll('.menu-item, .mobile-nav-item:not(.action-btn)'),
+  mobileQuickAdd: document.getElementById('mobile-quick-add'),
   pageSections: document.querySelectorAll('.page-section'),
   mobileSidebarToggle: document.getElementById('mobile-sidebar-toggle'),
   sidebar: document.querySelector('.sidebar'),
@@ -1285,13 +1286,26 @@ function closeSettlementModal() {
 
 function initEventListeners() {
   // Navigation tabs switches
+  // Navigation tabs switches
   elements.menuItems.forEach(item => {
     item.addEventListener('click', (e) => {
       e.preventDefault();
       const target = item.dataset.target;
       
-      elements.menuItems.forEach(i => i.classList.remove('active'));
-      item.classList.add('active');
+      elements.menuItems.forEach(i => {
+        if (i.dataset.target === target) {
+          i.classList.add('active');
+        } else {
+          i.classList.remove('active');
+        }
+      });
+
+      const labelEl = item.querySelector('span');
+      if (labelEl) {
+        elements.pageTitle.textContent = labelEl.textContent;
+      } else {
+        elements.pageTitle.textContent = target.charAt(0).toUpperCase() + target.slice(1);
+      }
 
       elements.pageSections.forEach(section => {
         section.classList.remove('active');
@@ -1300,13 +1314,9 @@ function initEventListeners() {
         }
       });
 
-      // Update header page name
-      elements.pageTitle.textContent = item.querySelector('span').textContent;
-      
       // Sync date formats
       if (target === 'dashboard') {
         elements.headerDashboardControls.style.display = 'flex';
-        // Reloadpicker
         handleTimeframeChange();
       } else {
         elements.headerDashboardControls.style.display = 'none';
@@ -1322,6 +1332,14 @@ function initEventListeners() {
       }
     });
   });
+
+  // Mobile floating quick add button
+  if (elements.mobileQuickAdd) {
+    elements.mobileQuickAdd.addEventListener('click', (e) => {
+      e.preventDefault();
+      openTxModal();
+    });
+  }
 
   // Mobile sidebar toggle
   elements.mobileSidebarToggle.addEventListener('click', () => {

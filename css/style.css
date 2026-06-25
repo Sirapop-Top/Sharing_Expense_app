@@ -536,12 +536,20 @@ button, input, select, textarea {
 }
 
 .card {
-  background-color: var(--bg-card);
-  border: 1px solid var(--border-color);
+  background: linear-gradient(135deg, rgba(21, 28, 44, 0.6) 0%, rgba(15, 23, 42, 0.8) 100%);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
   display: flex;
   flex-direction: column;
+  transition: transform var(--transition-normal), border var(--transition-fast), box-shadow var(--transition-normal);
+}
+
+.card:hover {
+  border-color: rgba(99, 102, 241, 0.18);
+  box-shadow: 0 15px 35px -10px rgba(99, 102, 241, 0.08), 0 10px 20px -15px rgba(0, 0, 0, 0.7);
 }
 
 .card-title {
@@ -1269,7 +1277,7 @@ button, input, select, textarea {
   }
 
   .mobile-toggle-btn {
-    display: flex;
+    display: none !important;
   }
 
   .sidebar {
@@ -1282,7 +1290,7 @@ button, input, select, textarea {
 
   .main-content {
     margin-left: 0;
-    padding: 20px;
+    padding: 20px 20px 90px 20px;
   }
 
   .top-header {
@@ -1386,4 +1394,81 @@ button, input, select, textarea {
 
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+/* Mobile Bottom Navigation Bar Styles */
+.mobile-nav {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobile-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 66px;
+    background: rgba(14, 19, 31, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    justify-content: space-around;
+    align-items: center;
+    z-index: 999;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
+  }
+
+  .mobile-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    color: var(--text-secondary);
+    font-size: 0.72rem;
+    font-weight: 500;
+    transition: all var(--transition-fast);
+    flex: 1;
+    height: 100%;
+  }
+
+  .mobile-nav-item i {
+    width: 20px;
+    height: 20px;
+  }
+
+  .mobile-nav-item.active {
+    color: var(--color-primary);
+  }
+
+  .mobile-nav-item.action-btn {
+    overflow: visible;
+    position: relative;
+  }
+
+  .action-circle {
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    margin-top: -32px;
+    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+    border: 4px solid var(--bg-app);
+    transition: transform var(--transition-fast);
+  }
+
+  .action-circle i {
+    width: 22px;
+    height: 22px;
+  }
+
+  .mobile-nav-item.action-btn:active .action-circle {
+    transform: scale(0.9);
+  }
 }
