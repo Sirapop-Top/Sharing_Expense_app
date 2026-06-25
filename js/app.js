@@ -81,6 +81,8 @@ const elements = {
   connectionUpdateForm: document.getElementById('connection-update-form'),
   settingsAppsScriptUrl: document.getElementById('settings-apps-script-url'),
   btnDisconnectAppsScript: document.getElementById('btn-disconnect-apps-script'),
+  syncToast: document.getElementById('sync-toast'),
+  syncToastText: document.getElementById('sync-toast-text'),
   
   // Modal Transaction
   transactionModal: document.getElementById('transaction-modal'),
@@ -118,6 +120,15 @@ const elements = {
   settleMathUser2Paid: document.getElementById('settle-math-user2-paid'),
   settleMathNetTransfer: document.getElementById('settle-math-net-transfer')
 };
+
+function showSyncIndicator(message = "Syncing with Google Sheets...") {
+  elements.syncToastText.textContent = message;
+  elements.syncToast.style.display = 'flex';
+}
+
+function hideSyncIndicator() {
+  elements.syncToast.style.display = 'none';
+}
 
 // ==========================================================================
 // API LAYER (HTTP Operations)
@@ -977,8 +988,21 @@ function renderTransactionsTable() {
       const id = row.dataset.id;
       const tx = state.transactions.find(t => t.id === id);
       if (confirm(`Are you sure you want to delete this expense for "${tx.description}" (฿${tx.amount.toFixed(2)})?`)) {
-        await apiDelete(`/api/transactions/${id}`);
-        await fetchAllData();
+        // Optimistic UI update
+        state.transactions = state.transactions.filter(t => t.id !== id);
+        updateUIElements();
+        
+        showSyncIndicator("Deleting expense from Google Sheets...");
+        
+        apiDelete(`/api/transactions/${id}`).then(() => {
+          hideSyncIndicator();
+          fetchAllData(); // Refresh list to ensure perfect sync
+        }).catch(err => {
+          console.error(err);
+          alert("Failed to delete transaction. Re-fetching data...");
+          hideSyncIndicator();
+          fetchAllData();
+        });
       }
     });
   });
@@ -1360,7 +1384,7 @@ function initEventListeners() {
     }
   });
 
-  // Submit log form (Create/Update)
+  // Submit log form (Create/Update with Optimistic UI updates)
   elements.transactionForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const id = elements.txId.value;
@@ -1388,14 +1412,55 @@ function initEventListeners() {
       status: elements.txStatus.value
     };
 
-    if (id) {
-      await apiPut(`/api/transactions/${id}`, payload);
-    } else {
-      await apiPost('/api/transactions', payload);
-    }
-
+    // Close modal immediately for 0ms perceived latency
     closeTxModal();
-    await fetchAllData();
+
+    if (id) {
+      // Optimistic edit
+      const index = state.transactions.findIndex(t => t.id === id);
+      if (index !== -1) {
+        state.transactions[index] = { ...state.transactions[index], ...payload };
+        updateUIElements();
+      }
+      
+      showSyncIndicator("Saving changes to Google Sheets...");
+      
+      apiPut(`/api/transactions/${id}`, payload).then(() => {
+        hideSyncIndicator();
+        fetchAllData(); // Silently reload to ensure perfect sync
+      }).catch(err => {
+        console.error(err);
+        alert("Failed to save changes. Re-fetching data...");
+        hideSyncIndicator();
+        fetchAllData();
+      });
+    } else {
+      // Optimistic create
+      const tempId = "tx_temp_" + Math.random().toString(36).substr(2, 9);
+      const optimisticTx = {
+        id: tempId,
+        ...payload
+      };
+      state.transactions.unshift(optimisticTx);
+      updateUIElements();
+      
+      showSyncIndicator("Adding expense to Google Sheets...");
+      
+      apiPost('/api/transactions', payload).then(saved => {
+        hideSyncIndicator();
+        // Replace temp transaction with actual saved one
+        const index = state.transactions.findIndex(t => t.id === tempId);
+        if (index !== -1 && saved) {
+          state.transactions[index] = saved;
+        }
+        fetchAllData();
+      }).catch(err => {
+        console.error(err);
+        alert("Failed to add transaction. Re-fetching data...");
+        hideSyncIndicator();
+        fetchAllData();
+      });
+    }
   });
 
   // Submit budget form
