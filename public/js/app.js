@@ -78,6 +78,9 @@ const elements = {
   namesUpdateForm: document.getElementById('names-update-form'),
   settingsUser1Name: document.getElementById('settings-user1-name'),
   settingsUser2Name: document.getElementById('settings-user2-name'),
+  connectionUpdateForm: document.getElementById('connection-update-form'),
+  settingsAppsScriptUrl: document.getElementById('settings-apps-script-url'),
+  btnDisconnectAppsScript: document.getElementById('btn-disconnect-apps-script'),
   
   // Modal Transaction
   transactionModal: document.getElementById('transaction-modal'),
@@ -119,7 +122,56 @@ const elements = {
 // ==========================================================================
 // API LAYER (HTTP Operations)
 // ==========================================================================
+function getDirectAppsScriptUrl() {
+  return localStorage.getItem('APPS_SCRIPT_URL');
+}
+
 async function apiGet(endpoint) {
+  const directUrl = getDirectAppsScriptUrl();
+  if (directUrl) {
+    let action = '';
+    if (endpoint === '/api/config') action = 'getConfig';
+    else if (endpoint === '/api/transactions') action = 'getTransactions';
+    else if (endpoint === '/api/budgets') action = 'getBudgets';
+    else if (endpoint === '/api/expense-types') action = 'getExpenseTypes';
+    else if (endpoint === '/api/settlements') action = 'getSettlements';
+    
+    if (action) {
+      const url = `${directUrl}${directUrl.includes('?') ? '&' : '?'}action=${action}`;
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`Apps Script GET ${action} failed`);
+        const data = await res.json();
+        
+        if (action === 'getConfig') {
+          // Add system fields returned by Node config for frontend state compat
+          return {
+            user1Name: data.user1Name || "Alex",
+            user2Name: data.user2Name || "Sam",
+            dbMode: "Google Sheets (Apps Script Direct)",
+            connectionError: null
+          };
+        }
+        if (action === 'getTransactions' && Array.isArray(data)) {
+          data.sort((a, b) => {
+            const dateA = new Date(a.date);
+            const dateB = new Date(b.date);
+            if (dateA - dateB !== 0) return dateB - dateA;
+            return b.id.localeCompare(a.id);
+          });
+        }
+        if (action === 'getSettlements' && Array.isArray(data)) {
+          data.sort((a, b) => new Date(b.settledDate) - new Date(a.settledDate));
+        }
+        return data;
+      } catch (err) {
+        console.error(err);
+        alert(`Apps Script Communication Error: ${err.message}`);
+        return null;
+      }
+    }
+  }
+
   try {
     const res = await fetch(endpoint);
     if (!res.ok) throw new Error(`GET ${endpoint} failed`);
@@ -132,6 +184,61 @@ async function apiGet(endpoint) {
 }
 
 async function apiPost(endpoint, body) {
+  const directUrl = getDirectAppsScriptUrl();
+  if (directUrl) {
+    let payload = {};
+    if (endpoint === '/api/config') {
+      payload = { action: 'saveConfig', config: body };
+    } else if (endpoint === '/api/transactions') {
+      const newTx = {
+        id: body.id || "tx_" + Math.random().toString(36).substr(2, 9),
+        ...body
+      };
+      payload = { action: 'saveTransaction', tx: newTx };
+    } else if (endpoint === '/api/budgets') {
+      payload = { action: 'saveBudget', budget: body };
+    } else if (endpoint === '/api/expense-types') {
+      payload = { action: 'saveExpenseType', name: body.name };
+    } else if (endpoint === '/api/settle-all') {
+      const today = new Date().toISOString().substring(0, 10);
+      payload = {
+        action: 'settleMonth',
+        yearMonth: body.yearMonth,
+        fromUser: body.fromUser,
+        toUser: body.toUser,
+        amount: parseFloat(body.amount),
+        date: today
+      };
+    }
+
+    if (payload.action) {
+      try {
+        const res = await fetch(directUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error(`Apps Script POST ${payload.action} failed`);
+        const result = await res.json();
+        
+        if (payload.action === 'saveTransaction') {
+          return payload.tx;
+        }
+        if (payload.action === 'saveExpenseType') {
+          return { name: payload.name };
+        }
+        if (payload.action === 'settleMonth') {
+          return { success: result.success, count: result.count, settlement: result.settlement };
+        }
+        return result;
+      } catch (err) {
+        console.error(err);
+        alert(`Apps Script POST Error: ${err.message}`);
+        return null;
+      }
+    }
+  }
+
   try {
     const res = await fetch(endpoint, {
       method: 'POST',
@@ -151,6 +258,31 @@ async function apiPost(endpoint, body) {
 }
 
 async function apiPut(endpoint, body) {
+  const directUrl = getDirectAppsScriptUrl();
+  if (directUrl) {
+    const parts = endpoint.split('/');
+    const id = parts[parts.length - 1];
+    const payload = {
+      action: 'updateTransaction',
+      id: id,
+      tx: body
+    };
+    try {
+      const res = await fetch(directUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) throw new Error(`Apps Script PUT updateTransaction failed`);
+      await res.json();
+      return body;
+    } catch (err) {
+      console.error(err);
+      alert(`Apps Script PUT Error: ${err.message}`);
+      return null;
+    }
+  }
+
   try {
     const res = await fetch(endpoint, {
       method: 'PUT',
@@ -167,6 +299,37 @@ async function apiPut(endpoint, body) {
 }
 
 async function apiDelete(endpoint) {
+  const directUrl = getDirectAppsScriptUrl();
+  if (directUrl) {
+    let payload = {};
+    if (endpoint.startsWith('/api/transactions/')) {
+      const parts = endpoint.split('/');
+      const id = parts[parts.length - 1];
+      payload = { action: 'deleteTransaction', id: id };
+    } else if (endpoint.startsWith('/api/expense-types/')) {
+      const parts = endpoint.split('/');
+      const name = decodeURIComponent(parts[parts.length - 1]);
+      payload = { action: 'deleteExpenseType', name: name };
+    }
+    
+    if (payload.action) {
+      try {
+        const res = await fetch(directUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error(`Apps Script DELETE ${payload.action} failed`);
+        const result = await res.json();
+        return { success: result.success };
+      } catch (err) {
+        console.error(err);
+        alert(`Apps Script DELETE Error: ${err.message}`);
+        return null;
+      }
+    }
+  }
+
   try {
     const res = await fetch(endpoint, { method: 'DELETE' });
     if (!res.ok) throw new Error(`DELETE ${endpoint} failed`);
@@ -334,6 +497,11 @@ function updateUIElements() {
   elements.sysUser1Name.textContent = state.config.user1Name;
   elements.sysUser2Name.textContent = state.config.user2Name;
   
+  // Apps Script direct connection form
+  const directUrl = getDirectAppsScriptUrl();
+  elements.settingsAppsScriptUrl.value = directUrl || '';
+  elements.btnDisconnectAppsScript.style.display = directUrl ? 'inline-block' : 'none';
+  
   // Custom display name fields in settings
   elements.settingsUser1Name.value = state.config.user1Name;
   elements.settingsUser2Name.value = state.config.user2Name;
@@ -342,7 +510,7 @@ function updateUIElements() {
   const dot = elements.dbModeIndicator.querySelector('.status-dot');
   const txt = elements.dbModeIndicator.querySelector('.mode-text');
   
-  if (state.config.dbMode === "Google Sheets") {
+  if (state.config.dbMode === "Google Sheets" || state.config.dbMode === "Google Sheets (Apps Script)" || state.config.dbMode === "Google Sheets (Apps Script Direct)") {
     txt.textContent = state.config.dbMode;
     elements.dbModeIndicator.title = "Connected to Google Sheets successfully.";
     elements.dbModeIndicator.style.cursor = 'default';
@@ -1196,6 +1364,32 @@ function initEventListeners() {
     await apiPost('/api/settle-all', payload);
     closeSettlementModal();
     await fetchAllData();
+  });
+
+  // Submit Google Apps Script direct connection form
+  elements.connectionUpdateForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const url = elements.settingsAppsScriptUrl.value.trim();
+    if (!url) return;
+    
+    if (!url.startsWith('https://script.google.com/')) {
+      alert('Invalid URL. The Google Apps Script URL must start with "https://script.google.com/"');
+      return;
+    }
+    
+    localStorage.setItem('APPS_SCRIPT_URL', url);
+    alert('Connected directly to Google Sheets via Apps Script! Refreshing data...');
+    await fetchAllData();
+  });
+
+  // Disconnect Google Apps Script
+  elements.btnDisconnectAppsScript.addEventListener('click', async () => {
+    if (confirm('Are you sure you want to disconnect from direct Google Sheet connection and fall back to local server APIs?')) {
+      localStorage.removeItem('APPS_SCRIPT_URL');
+      elements.settingsAppsScriptUrl.value = '';
+      alert('Disconnected. Refreshing data...');
+      await fetchAllData();
+    }
   });
 }
 

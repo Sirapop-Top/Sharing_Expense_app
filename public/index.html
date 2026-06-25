@@ -318,6 +318,26 @@
             </div>
           </div>
           
+          <!-- Customize Google Sheets / Apps Script Connection -->
+          <div class="card col-span-2">
+            <div class="card-header-flex border-bottom">
+              <h2 class="card-title">Direct Google Sheets Connection (Serverless / GitHub Pages)</h2>
+            </div>
+            <div class="settings-padding">
+              <p class="description-text" style="margin-bottom: 12px;">
+                If you are hosting this app statically on <strong>GitHub Pages</strong> (or running it without a local server), you can connect it directly to your Google Sheet. Paste your deployed Google Apps Script Web App URL below:
+              </p>
+              <form id="connection-update-form" class="inline-form" style="gap: 12px; align-items: flex-end;">
+                <div class="form-group" style="flex: 1; min-width: 250px;">
+                  <label for="settings-apps-script-url">Google Apps Script Web App URL</label>
+                  <input type="url" id="settings-apps-script-url" class="form-input" placeholder="https://script.google.com/macros/s/AKfycb.../exec" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="height: 42px;">Connect URL</button>
+                <button type="button" id="btn-disconnect-apps-script" class="btn btn-danger" style="height: 42px; display: none;">Disconnect</button>
+              </form>
+            </div>
+          </div>
+          
           <!-- System Configuration parameters -->
           <div class="card col-span-2">
             <div class="card-header-flex border-bottom">

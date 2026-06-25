@@ -75,6 +75,28 @@ GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAAS
 ```
 *(Make sure to enclose the private key in double quotes and replace physical newlines with `\n` to prevent parsing issues).*
 
+### ⚡ Alternative: Connect via Google Apps Script (Easiest Method)
+
+If you prefer not to set up a Google Cloud Service Account, you can connect FairShare to your Google Sheet using a **Google Apps Script Web App**:
+
+1. Open your Google Sheet: [Spreadsheet Link](https://docs.google.com/spreadsheets/d/1XD7hd5ZTUeNejSs9tgA7NwElZjUovjAqtr_Y1OiFzn8/edit?gid=1904234354#gid=1904234354).
+2. From the top menu, go to **Extensions** > **Apps Script**.
+3. Delete any code in the editor, and copy-paste the entire contents of the [apps_script.js](file:///C:/Users/sirap/Desktop/AI/Project/Sharing_Expense_app/apps_script.js) file.
+4. Click the **Save** icon (floppy disk) at the top.
+5. Click the **Deploy** button (top right) > Select **New deployment**.
+6. Click the gear icon next to "Select type" and select **Web app**.
+7. Set the configuration details:
+   - **Execute as**: `Me (your-email@gmail.com)`
+   - **Who has access**: `Anyone`
+8. Click **Deploy**. 
+9. Authorize the permissions (Click *Authorize Access* > Select your Google Account > Click *Advanced* > Click *Go to Project (unsafe)* > Click *Allow*).
+10. Copy the generated **Web App URL** (e.g., `https://script.google.com/macros/s/AKfycb.../exec`).
+11. Paste this URL into your `.env` file:
+    ```env
+    APPS_SCRIPT_URL="https://script.google.com/macros/s/AKfycb.../exec"
+    ```
+    *(When `APPS_SCRIPT_URL` is set, the application will automatically bypass local mock DB and GCP Service Account credentials and route all reads and writes directly through this Web App URL).*
+
 ---
 
 ## 🚀 Running the Application Locally
