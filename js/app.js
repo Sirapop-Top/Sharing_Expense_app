@@ -163,6 +163,30 @@ function setupCurrencyInput(inputElement, onBlurCallback) {
   });
 }
 
+function getCategoryColorClass(categoryName) {
+  if (!categoryName) return 'cat-misc';
+  
+  // Clean name
+  const clean = categoryName.trim().toLowerCase();
+  
+  // Specific English and Thai mappings for standard ones
+  if (clean.includes('food') || clean.includes('อาหาร') || clean.includes('กิน')) return 'cat-food';
+  if (clean.includes('utility') || clean.includes('utilities') || clean.includes('ไฟ') || clean.includes('น้ำ') || clean.includes('บิล')) return 'cat-utilities';
+  if (clean.includes('rent') || clean.includes('ห้อง') || clean.includes('บ้าน') || clean.includes('หอ')) return 'cat-rent';
+  if (clean.includes('entertain') || clean.includes('movie') || clean.includes('game') || clean.includes('หนัง') || clean.includes('เที่ยว')) return 'cat-entertainment';
+  if (clean.includes('transport') || clean.includes('travel') || clean.includes('รถ') || clean.includes('เดินทาง') || clean.includes('bts') || clean.includes('mrt')) return 'cat-transport';
+  if (clean.includes('misc') || clean.includes('อื่น') || clean.includes('ทั่วไป')) return 'cat-misc';
+  
+  // For any other custom categories, compute a simple hash to assign a distinct class dynamically
+  let hash = 0;
+  for (let i = 0; i < clean.length; i++) {
+    hash = clean.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % 6;
+  const classes = ['cat-food', 'cat-utilities', 'cat-rent', 'cat-entertainment', 'cat-transport', 'cat-misc'];
+  return classes[index];
+}
+
 // ==========================================================================
 // API LAYER (HTTP Operations)
 // ==========================================================================
@@ -1021,7 +1045,7 @@ function renderTransactionsTable() {
       <tr data-id="${t.id}">
         <td data-label="Date" class="tx-date-col">${t.date}</td>
         <td data-label="Description" class="tx-desc-col" title="${t.description}">${t.description || '-'}</td>
-        <td data-label="Category"><span class="cat-badge ${t.expenseType ? t.expenseType.toLowerCase().replace(/\s+/g, '-') : 'miscellaneous'}">${t.expenseType}</span></td>
+        <td data-label="Category"><span class="cat-badge ${getCategoryColorClass(t.expenseType)}">${t.expenseType}</span></td>
         <td data-label="Paid By" style="font-weight:600;">${paidByName}</td>
         <td data-label="Amount" class="tx-amount-col">฿${formatCurrency(t.amount)}</td>
         <td data-label="Split" class="tx-split-col">${splitText}</td>
@@ -1105,7 +1129,7 @@ function renderBudgetsPage() {
     return `
       <div class="budget-viewer-card ${isExceeded ? 'border-danger' : ''}">
         <div class="budget-info-left">
-          <span class="cat">${b.expenseType}</span>
+          <span class="cat-badge ${getCategoryColorClass(b.expenseType)}">${b.expenseType}</span>
           <span class="limit">Limit: ฿${formatCurrency(b.budgetAmount)}</span>
         </div>
         <div style="text-align:right;">
@@ -1413,6 +1437,29 @@ function initEventListeners() {
   elements.mobileSidebarToggle.addEventListener('click', () => {
     elements.sidebar.classList.toggle('active');
   });
+
+  // Mobile chart tabs toggle behavior
+  const categoryTab = document.querySelector('.chart-tab[data-chart="category"]');
+  const paidTab = document.querySelector('.chart-tab[data-chart="paid"]');
+  const chartsContainer = document.querySelector('.charts-container');
+  
+  if (categoryTab && paidTab && chartsContainer) {
+    categoryTab.addEventListener('click', (e) => {
+      e.preventDefault();
+      categoryTab.classList.add('active');
+      paidTab.classList.remove('active');
+      chartsContainer.classList.remove('show-paid');
+      chartsContainer.classList.add('show-category');
+    });
+    
+    paidTab.addEventListener('click', (e) => {
+      e.preventDefault();
+      paidTab.classList.add('active');
+      categoryTab.classList.remove('active');
+      chartsContainer.classList.remove('show-category');
+      chartsContainer.classList.add('show-paid');
+    });
+  }
 
   // Dashboard specific timeframe filter
   elements.dashboardTimeframe.addEventListener('change', handleTimeframeChange);
