@@ -79,6 +79,32 @@ function formatDateIso(val) {
   if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
     return str.substring(0, 10);
   }
+  
+  // Parse DD/MM/YYYY or D/M/YYYY formats (common in Thailand / Europe)
+  var parts = str.split(/[\/\-]/);
+  if (parts.length === 3) {
+    var p0 = parseInt(parts[0], 10);
+    var p1 = parseInt(parts[1], 10);
+    var p2 = parseInt(parts[2], 10);
+    if (!isNaN(p0) && !isNaN(p1) && !isNaN(p2)) {
+      if (parts[2].length === 4) {
+        var year = p2;
+        if (year > 2400) year -= 543; // Buddhist Era adjustment (e.g. 2569 -> 2026)
+        
+        var month = p1;
+        var day = p0;
+        if (p1 > 12 && p0 <= 12) { // Handle MM/DD/YYYY if month is in first position
+          month = p0;
+          day = p1;
+        }
+        var yyyy = String(year);
+        var mm = month < 10 ? "0" + month : String(month);
+        var dd = day < 10 ? "0" + day : String(day);
+        return yyyy + "-" + mm + "-" + dd;
+      }
+    }
+  }
+
   try {
     var d = new Date(str);
     if (!isNaN(d.getTime())) {
