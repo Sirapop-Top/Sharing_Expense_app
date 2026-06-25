@@ -170,12 +170,12 @@ function getCategoryColorClass(categoryName) {
   const clean = categoryName.trim().toLowerCase();
   
   // Specific English and Thai mappings for standard ones
-  if (clean.includes('food') || clean.includes('อาหาร') || clean.includes('กิน')) return 'cat-food';
-  if (clean.includes('utility') || clean.includes('utilities') || clean.includes('ไฟ') || clean.includes('น้ำ') || clean.includes('บิล')) return 'cat-utilities';
-  if (clean.includes('rent') || clean.includes('ห้อง') || clean.includes('บ้าน') || clean.includes('หอ')) return 'cat-rent';
-  if (clean.includes('entertain') || clean.includes('movie') || clean.includes('game') || clean.includes('หนัง') || clean.includes('เที่ยว')) return 'cat-entertainment';
-  if (clean.includes('transport') || clean.includes('travel') || clean.includes('รถ') || clean.includes('เดินทาง') || clean.includes('bts') || clean.includes('mrt')) return 'cat-transport';
-  if (clean.includes('misc') || clean.includes('อื่น') || clean.includes('ทั่วไป')) return 'cat-misc';
+  if (clean.includes('food') || clean.includes('eat') || clean.includes('delivery') || clean.includes('takeaway') || clean.includes('cafe') || clean.includes('restaurant') || clean.includes('อาหาร') || clean.includes('กิน') || clean.includes('ข้าว') || clean.includes('สั่ง')) return 'cat-food';
+  if (clean.includes('utility') || clean.includes('utilities') || clean.includes('bill') || clean.includes('internet') || clean.includes('wifi') || clean.includes('power') || clean.includes('electric') || clean.includes('water') || clean.includes('ไฟ') || clean.includes('น้ำ') || clean.includes('บิล') || clean.includes('เน็ต')) return 'cat-utilities';
+  if (clean.includes('rent') || clean.includes('room') || clean.includes('apartment') || clean.includes('condo') || clean.includes('บ้าน') || clean.includes('หอ') || clean.includes('ห้อง') || clean.includes('เช่า')) return 'cat-rent';
+  if (clean.includes('entertain') || clean.includes('entertainment') || clean.includes('movie') || clean.includes('game') || clean.includes('netflix') || clean.includes('shopping') || clean.includes('ช็อปปิ้ง') || clean.includes('ซื้อของ') || clean.includes('เที่ยว') || clean.includes('เล่น') || clean.includes('เกม') || clean.includes('หนัง')) return 'cat-entertainment';
+  if (clean.includes('transport') || clean.includes('travel') || clean.includes('taxi') || clean.includes('grab') || clean.includes('bts') || clean.includes('mrt') || clean.includes('bus') || clean.includes('fuel') || clean.includes('gas') || clean.includes('รถ') || clean.includes('เดินทาง') || clean.includes('เรือ') || clean.includes('น้ำมัน')) return 'cat-transport';
+  if (clean.includes('misc') || clean.includes('other') || clean.includes('miscellaneous') || clean.includes('อื่น') || clean.includes('ทั่วไป')) return 'cat-misc';
   
   // For any other custom categories, compute a simple hash to assign a distinct class dynamically
   let hash = 0;
@@ -1152,7 +1152,7 @@ function renderSettingsPage() {
   // 1. Categories List
   const catItems = state.categories.map(c => `
     <li>
-      <span>${c}</span>
+      <span class="cat-badge ${getCategoryColorClass(c)}">${c}</span>
       <button class="btn-action-icon delete delete-cat-btn" data-cat="${c}" title="Delete Category">
         <i data-lucide="trash-2"></i>
       </button>
