@@ -169,12 +169,19 @@
         <div class="dashboard-row">
           <!-- Charts Section -->
           <div class="dashboard-col card col-8">
-            <h3 class="card-title">Monthly Expense Breakdown</h3>
+            <div class="card-header-flex" style="border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 16px;">
+              <h3 class="card-title" style="margin: 0;">Expense Analytics</h3>
+              <!-- Mobile Chart Switcher Tabs -->
+              <div class="chart-tabs" id="mobile-chart-tabs" style="display: none;">
+                <button type="button" class="chart-tab active" data-chart="category">Category</button>
+                <button type="button" class="chart-tab" data-chart="paid">Who Paid</button>
+              </div>
+            </div>
             <div class="charts-container">
-              <div class="chart-box">
+              <div class="chart-box" id="box-chart-category">
                 <canvas id="categoryPieChart"></canvas>
               </div>
-              <div class="chart-box">
+              <div class="chart-box" id="box-chart-paid">
                 <canvas id="paidComparisonBarChart"></canvas>
               </div>
             </div>
