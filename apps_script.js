@@ -320,3 +320,25 @@ function settleMonth(ss, yearMonth, fromUser, toUser, amount, date) {
   saveSettlement(ss, settlement);
   return { success: true, count: count, settlement: settlement };
 }
+
+/**
+ * Run this function in the Google Apps Script Editor to view the structure of old monthly sheets.
+ * Select 'inspectOldSheets' from the dropdown and click 'Run'.
+ */
+function inspectOldSheets() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var months = ['MAR26', 'APR26', 'MAY26', 'JUN26'];
+  months.forEach(function(month) {
+    var sheet = ss.getSheetByName(month);
+    if (!sheet) {
+      Logger.log("⚠️ Sheet " + month + " not found.");
+      return;
+    }
+    var values = sheet.getRange(1, 1, 5, 12).getValues(); // Get first 5 rows and 12 columns
+    Logger.log("=== Sheet: " + month + " ===");
+    Logger.log("Headers (Row 1): " + JSON.stringify(values[0]));
+    Logger.log("Row 2 Data: " + JSON.stringify(values[1]));
+    Logger.log("Row 3 Data: " + JSON.stringify(values[2]));
+  });
+}
+

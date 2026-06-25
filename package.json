@@ -7,7 +7,8 @@
     "start": "node server.js",
     "dev": "node server.js",
     "test": "node scripts/verify.js",
-    "push": "node scripts/push.js"
+    "push": "node scripts/push.js",
+    "migrate": "node scripts/migrate.js"
   },
   "keywords": [
     "expense-sharing",
