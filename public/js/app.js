@@ -377,6 +377,45 @@ async function fetchAllData() {
     return;
   }
 
+  if (directUrl) {
+    try {
+      const url = `${directUrl}${directUrl.includes('?') ? '&' : '?'}action=all`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Failed to fetch all data from Google Sheets Apps Script");
+      const data = await res.json();
+      
+      if (data) {
+        state.config = {
+          user1Name: data.config ? data.config.user1Name : "Alex",
+          user2Name: data.config ? data.config.user2Name : "Sam",
+          dbMode: "Google Sheets (Apps Script Direct)",
+          connectionError: null
+        };
+        
+        state.transactions = data.transactions || [];
+        state.transactions.sort((a, b) => {
+          const dateA = new Date(a.date);
+          const dateB = new Date(b.date);
+          if (dateA - dateB !== 0) return dateB - dateA;
+          return b.id.localeCompare(a.id);
+        });
+        
+        state.budgets = data.budgets || [];
+        state.categories = data.expenseTypes || [];
+        
+        state.settlements = data.settlements || [];
+        state.settlements.sort((a, b) => new Date(b.settledDate) - new Date(a.settledDate));
+        
+        updateUIElements();
+      }
+      return;
+    } catch (err) {
+      console.error(err);
+      alert(`Apps Script Connection Error: ${err.message}`);
+      return;
+    }
+  }
+
   const [config, transactions, budgets, categories, settlements] = await Promise.all([
     apiGet('/api/config'),
     apiGet('/api/transactions'),
