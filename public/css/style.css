@@ -235,6 +235,24 @@ button, input, select, textarea {
   border-color: rgba(16, 185, 129, 0.3);
 }
 
+.cat-badge.cat-delivery {
+  background-color: rgba(239, 68, 68, 0.12);
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.cat-badge.cat-eatout {
+  background-color: rgba(249, 115, 22, 0.12);
+  color: #ffb74d;
+  border-color: rgba(249, 115, 22, 0.3);
+}
+
+.cat-badge.cat-supermarket {
+  background-color: rgba(132, 204, 22, 0.12);
+  color: #bef264;
+  border-color: rgba(132, 204, 22, 0.3);
+}
+
 
 .status-dot {
   width: 8px;
@@ -1657,6 +1675,12 @@ button, input, select, textarea {
 
   .actions-cell {
     gap: 16px;
+  }
+
+  /* Stack modal form grid rows on mobile */
+  .form-row-2 {
+    grid-template-columns: 1fr !important;
+    gap: 12px;
   }
 }
 

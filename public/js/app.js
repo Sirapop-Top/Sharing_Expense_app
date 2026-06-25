@@ -169,8 +169,13 @@ function getCategoryColorClass(categoryName) {
   // Clean name
   const clean = categoryName.trim().toLowerCase();
   
-  // Specific English and Thai mappings for standard ones
-  if (clean.includes('food') || clean.includes('eat') || clean.includes('delivery') || clean.includes('takeaway') || clean.includes('cafe') || clean.includes('restaurant') || clean.includes('อาหาร') || clean.includes('กิน') || clean.includes('ข้าว') || clean.includes('สั่ง')) return 'cat-food';
+  // Explicit mappings for user-defined specific categories
+  if (clean === 'delivery food' || clean === 'delivery' || clean.includes('delivery')) return 'cat-delivery';
+  if (clean === 'eat out' || clean === 'eatout' || clean.includes('eat out') || clean.includes('eatout')) return 'cat-eatout';
+  if (clean === 'supermarket' || clean === 'supermaket' || clean === 'grocery' || clean.includes('supermarket') || clean.includes('supermaket')) return 'cat-supermarket';
+  
+  // Standard mappings
+  if (clean.includes('food') || clean.includes('eat') || clean.includes('อาหาร') || clean.includes('กิน') || clean.includes('ข้าว')) return 'cat-food';
   if (clean.includes('utility') || clean.includes('utilities') || clean.includes('bill') || clean.includes('internet') || clean.includes('wifi') || clean.includes('power') || clean.includes('electric') || clean.includes('water') || clean.includes('ไฟ') || clean.includes('น้ำ') || clean.includes('บิล') || clean.includes('เน็ต')) return 'cat-utilities';
   if (clean.includes('rent') || clean.includes('room') || clean.includes('apartment') || clean.includes('condo') || clean.includes('บ้าน') || clean.includes('หอ') || clean.includes('ห้อง') || clean.includes('เช่า')) return 'cat-rent';
   if (clean.includes('entertain') || clean.includes('entertainment') || clean.includes('movie') || clean.includes('game') || clean.includes('netflix') || clean.includes('shopping') || clean.includes('ช็อปปิ้ง') || clean.includes('ซื้อของ') || clean.includes('เที่ยว') || clean.includes('เล่น') || clean.includes('เกม') || clean.includes('หนัง')) return 'cat-entertainment';
@@ -182,8 +187,8 @@ function getCategoryColorClass(categoryName) {
   for (let i = 0; i < clean.length; i++) {
     hash = clean.charCodeAt(i) + ((hash << 5) - hash);
   }
-  const index = Math.abs(hash) % 6;
-  const classes = ['cat-food', 'cat-utilities', 'cat-rent', 'cat-entertainment', 'cat-transport', 'cat-misc'];
+  const index = Math.abs(hash) % 9;
+  const classes = ['cat-food', 'cat-utilities', 'cat-rent', 'cat-entertainment', 'cat-transport', 'cat-misc', 'cat-delivery', 'cat-eatout', 'cat-supermarket'];
   return classes[index];
 }
 
