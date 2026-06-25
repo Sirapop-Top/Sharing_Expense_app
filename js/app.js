@@ -1021,7 +1021,7 @@ function renderTransactionsTable() {
       <tr data-id="${t.id}">
         <td data-label="Date" class="tx-date-col">${t.date}</td>
         <td data-label="Description" class="tx-desc-col" title="${t.description}">${t.description || '-'}</td>
-        <td data-label="Category"><span class="db-mode-badge">${t.expenseType}</span></td>
+        <td data-label="Category"><span class="cat-badge ${t.expenseType ? t.expenseType.toLowerCase().replace(/\s+/g, '-') : 'miscellaneous'}">${t.expenseType}</span></td>
         <td data-label="Paid By" style="font-weight:600;">${paidByName}</td>
         <td data-label="Amount" class="tx-amount-col">฿${formatCurrency(t.amount)}</td>
         <td data-label="Split" class="tx-split-col">${splitText}</td>
