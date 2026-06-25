@@ -343,6 +343,40 @@ async function apiDelete(endpoint) {
 
 // Fetch all initial data from server
 async function fetchAllData() {
+  const isStaticPages = window.location.hostname.endsWith('github.io') || window.location.protocol === 'file:';
+  const directUrl = getDirectAppsScriptUrl();
+  
+  if (isStaticPages && !directUrl) {
+    // We are on GitHub Pages but have no Apps Script URL configured yet
+    state.config = {
+      user1Name: "Alex",
+      user2Name: "Sam",
+      dbMode: "Setup Required",
+      connectionError: "Please configure your Google Apps Script URL in the Settings tab below to connect your Google Sheets database."
+    };
+    state.transactions = [];
+    state.budgets = [];
+    state.categories = ["Food", "Utilities", "Rent", "Entertainment", "Transport", "Miscellaneous"];
+    state.settlements = [];
+    
+    updateUIElements();
+    
+    // Switch to Settings tab automatically to guide them
+    const settingsTab = document.querySelector('.menu-item[data-target="settings"]');
+    if (settingsTab) {
+      // Small timeout to ensure DOM is fully loaded and initialized
+      setTimeout(() => {
+        settingsTab.click();
+      }, 100);
+    }
+    
+    // Show a polite helper alert explaining what to do
+    setTimeout(() => {
+      alert("Welcome to FairShare on GitHub Pages!\n\nTo start tracking expenses, please paste your Google Apps Script Web App URL in the input field on the Settings page and click 'Connect URL'.");
+    }, 600);
+    return;
+  }
+
   const [config, transactions, budgets, categories, settlements] = await Promise.all([
     apiGet('/api/config'),
     apiGet('/api/transactions'),
@@ -522,7 +556,11 @@ function updateUIElements() {
       elements.dbModeIndicator.title = `Click to see details. Connection Error: ${state.config.connectionError}`;
       elements.dbModeIndicator.style.cursor = 'pointer';
       elements.dbModeIndicator.onclick = () => {
-        alert(`Google Sheets Connection Error Detail:\n\n${state.config.connectionError}\n\nTroubleshooting tips:\n1. Check that the spreadsheet ID is correct.\n2. Ensure you shared the sheet as "Editor" with the Service Account email.\n3. Make sure the private key is pasted completely and formatted correctly in Render (do not wrap in quotes inside the Render Env form).`);
+        if (state.config.dbMode === "Setup Required") {
+          alert(`Google Sheets Direct Setup Required:\n\nTo connect this static application to your Google Sheet, please paste your deployed Google Apps Script Web App URL in the "Direct Google Sheets Connection" field on the Settings page, and click "Connect URL".`);
+        } else {
+          alert(`Google Sheets Connection Error Detail:\n\n${state.config.connectionError}\n\nTroubleshooting tips:\n1. Check that the spreadsheet ID is correct.\n2. Ensure you shared the sheet as "Editor" with the Service Account email.\n3. Make sure the private key is pasted completely and formatted correctly in Render (do not wrap in quotes inside the Render Env form).`);
+        }
       };
     } else {
       elements.dbModeIndicator.title = "Running on local Mock Database fallback.";
