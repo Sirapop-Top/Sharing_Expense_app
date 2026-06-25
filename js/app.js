@@ -137,6 +137,32 @@ function formatCurrency(val) {
   return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function parseCurrency(val) {
+  if (typeof val === 'number') return val;
+  if (!val) return 0;
+  const clean = String(val).replace(/,/g, '');
+  const num = parseFloat(clean);
+  return isNaN(num) ? 0 : num;
+}
+
+function setupCurrencyInput(inputElement, onBlurCallback) {
+  inputElement.addEventListener('focus', () => {
+    const val = inputElement.value;
+    if (val) {
+      inputElement.value = val.replace(/,/g, '');
+    }
+  });
+  
+  inputElement.addEventListener('blur', () => {
+    const val = inputElement.value;
+    if (val) {
+      const num = parseCurrency(val);
+      inputElement.value = formatCurrency(num);
+    }
+    if (onBlurCallback) onBlurCallback();
+  });
+}
+
 // ==========================================================================
 // API LAYER (HTTP Operations)
 // ==========================================================================
@@ -993,14 +1019,14 @@ function renderTransactionsTable() {
 
     return `
       <tr data-id="${t.id}">
-        <td class="tx-date-col">${t.date}</td>
-        <td class="tx-desc-col" title="${t.description}">${t.description || '-'}</td>
-        <td><span class="db-mode-badge">${t.expenseType}</span></td>
-        <td style="font-weight:600;">${paidByName}</td>
-        <td class="tx-amount-col">฿${formatCurrency(t.amount)}</td>
-        <td class="tx-split-col">${splitText}</td>
-        <td><span class="status-badge ${statusClass}">${t.status}</span></td>
-        <td>
+        <td data-label="Date" class="tx-date-col">${t.date}</td>
+        <td data-label="Description" class="tx-desc-col" title="${t.description}">${t.description || '-'}</td>
+        <td data-label="Category"><span class="db-mode-badge">${t.expenseType}</span></td>
+        <td data-label="Paid By" style="font-weight:600;">${paidByName}</td>
+        <td data-label="Amount" class="tx-amount-col">฿${formatCurrency(t.amount)}</td>
+        <td data-label="Split" class="tx-split-col">${splitText}</td>
+        <td data-label="Status"><span class="status-badge ${statusClass}">${t.status}</span></td>
+        <td class="tx-actions-col">
           <div class="actions-cell">
             <button class="btn-action-icon edit-tx-btn" title="Edit"><i data-lucide="edit-2"></i></button>
             <button class="btn-action-icon delete delete-tx-btn" title="Delete"><i data-lucide="trash-2"></i></button>
@@ -1179,16 +1205,16 @@ function openTxModal(editId = null) {
     elements.txId.value = tx.id;
     elements.txDate.value = tx.date;
     elements.txPaidBy.value = tx.paidBy;
-    elements.txAmount.value = tx.amount;
+    elements.txAmount.value = formatCurrency(tx.amount);
     elements.txCategory.value = tx.expenseType;
-    elements.txDesc.value = tx.description;
+    elements.txDesc.value = tx.description || "";
     elements.txSplitRatio.value = tx.splitRatio;
     elements.txStatus.value = tx.status;
     
     if (tx.splitRatio === 'Custom') {
       elements.customSplitFields.style.display = 'block';
-      elements.txUser1Share.value = tx.user1Amount;
-      elements.txUser2Share.value = tx.user2Amount;
+      elements.txUser1Share.value = formatCurrency(tx.user1Amount);
+      elements.txUser2Share.value = formatCurrency(tx.user2Amount);
     } else {
       elements.customSplitFields.style.display = 'none';
       elements.txUser1Share.value = '';
@@ -1218,20 +1244,24 @@ function closeTxModal() {
   elements.transactionModal.classList.remove('active');
   elements.transactionForm.reset();
 }
-
 // Auto-Split Calculation engine
 function handleAmountOrSplitChange() {
-  const amount = parseFloat(elements.txAmount.value) || 0;
+  const amount = parseCurrency(elements.txAmount.value);
   const splitStrategy = elements.txSplitRatio.value;
 
   if (splitStrategy === '50:50') {
     elements.customSplitFields.style.display = 'none';
-    elements.txUser1Share.value = (amount / 2).toFixed(2);
-    elements.txUser2Share.value = (amount / 2).toFixed(2);
+    elements.txUser1Share.value = formatCurrency(amount / 2);
+    elements.txUser2Share.value = formatCurrency(amount / 2);
     elements.modalTxSave.disabled = false;
     elements.splitCalcFeedback.style.display = 'none';
   } else {
     elements.customSplitFields.style.display = 'block';
+    // Do not override user custom values if already entered
+    if (!elements.txUser1Share.value && !elements.txUser2Share.value) {
+      elements.txUser1Share.value = formatCurrency(amount / 2);
+      elements.txUser2Share.value = formatCurrency(amount / 2);
+    }
     validateCustomSplit();
   }
 }
@@ -1240,9 +1270,9 @@ function handleAmountOrSplitChange() {
 function validateCustomSplit() {
   if (elements.txSplitRatio.value !== 'Custom') return;
 
-  const total = parseFloat(elements.txAmount.value) || 0;
-  const u1Share = parseFloat(elements.txUser1Share.value) || 0;
-  const u2Share = parseFloat(elements.txUser2Share.value) || 0;
+  const total = parseCurrency(elements.txAmount.value);
+  const u1Share = parseCurrency(elements.txUser1Share.value);
+  const u2Share = parseCurrency(elements.txUser2Share.value);
 
   const diff = Math.abs((u1Share + u2Share) - total);
   
@@ -1415,6 +1445,12 @@ function initEventListeners() {
     document.querySelector('.menu-item[data-target="budgets"]').click();
   });
 
+  // Setup focus and blur behaviors for currency inputs
+  setupCurrencyInput(elements.txAmount, handleAmountOrSplitChange);
+  setupCurrencyInput(elements.txUser1Share, validateCustomSplit);
+  setupCurrencyInput(elements.txUser2Share, validateCustomSplit);
+  setupCurrencyInput(elements.budgetAmount);
+
   // Transaction form change calculations
   elements.txAmount.addEventListener('input', handleAmountOrSplitChange);
   elements.txSplitRatio.addEventListener('change', handleAmountOrSplitChange);
@@ -1445,15 +1481,15 @@ function initEventListeners() {
     e.preventDefault();
     const id = elements.txId.value;
     const splitRatio = elements.txSplitRatio.value;
-    const amount = parseFloat(elements.txAmount.value);
+    const amount = parseCurrency(elements.txAmount.value);
     
     let user1Amount, user2Amount;
     if (splitRatio === '50:50') {
       user1Amount = amount / 2;
       user2Amount = amount / 2;
     } else {
-      user1Amount = parseFloat(elements.txUser1Share.value);
-      user2Amount = parseFloat(elements.txUser2Share.value);
+      user1Amount = parseCurrency(elements.txUser1Share.value);
+      user2Amount = parseCurrency(elements.txUser2Share.value);
     }
 
     const payload = {
@@ -1525,7 +1561,7 @@ function initEventListeners() {
     const payload = {
       yearMonth: state.currentMonth,
       expenseType: elements.budgetCategory.value,
-      budgetAmount: parseFloat(elements.budgetAmount.value)
+      budgetAmount: parseCurrency(elements.budgetAmount.value)
     };
 
     await apiPost('/api/budgets', payload);
