@@ -131,6 +131,12 @@ function hideSyncIndicator() {
   elements.syncToast.style.display = 'none';
 }
 
+function formatCurrency(val) {
+  const num = parseFloat(val);
+  if (isNaN(num)) return "0.00";
+  return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 // ==========================================================================
 // API LAYER (HTTP Operations)
 // ==========================================================================
@@ -539,12 +545,12 @@ function calculateTimeframeBalances() {
     owesAmount = Math.abs(u1Net);
     ower = state.config.user2Name;
     receiver = state.config.user1Name;
-    netText = `${ower} owes ${receiver} ฿${owesAmount.toFixed(2)}`;
+    netText = `${ower} owes ${receiver} ฿${formatCurrency(owesAmount)}`;
   } else if (u1Net < -0.01) {
     owesAmount = Math.abs(u1Net);
     ower = state.config.user1Name;
     receiver = state.config.user2Name;
-    netText = `${ower} owes ${receiver} ฿${owesAmount.toFixed(2)}`;
+    netText = `${ower} owes ${receiver} ฿${formatCurrency(owesAmount)}`;
   } else {
     netText = "All Settled Up!";
   }
@@ -674,12 +680,12 @@ function renderDashboard() {
   const balance = calculateTimeframeBalances();
   
   // Renders KPIs
-  elements.dashboardTotalSpent.textContent = `฿${balance.totalSpent.toFixed(2)}`;
-  elements.dashboardUser1Paid.textContent = `฿${balance.user1PaidTotal.toFixed(2)}`;
-  elements.dashboardUser2Paid.textContent = `฿${balance.user2PaidTotal.toFixed(2)}`;
+  elements.dashboardTotalSpent.textContent = `฿${formatCurrency(balance.totalSpent)}`;
+  elements.dashboardUser1Paid.textContent = `฿${formatCurrency(balance.user1PaidTotal)}`;
+  elements.dashboardUser2Paid.textContent = `฿${formatCurrency(balance.user2PaidTotal)}`;
   
-  elements.dashboardUser1Share.textContent = `Share: ฿${balance.user1ShareTotal.toFixed(2)}`;
-  elements.dashboardUser2Share.textContent = `Share: ฿${balance.user2ShareTotal.toFixed(2)}`;
+  elements.dashboardUser1Share.textContent = `Share: ฿${formatCurrency(balance.user1ShareTotal)}`;
+  elements.dashboardUser2Share.textContent = `Share: ฿${formatCurrency(balance.user2ShareTotal)}`;
   
   // Balance status displays
   elements.dashboardNetSummary.textContent = balance.netText;
@@ -793,7 +799,7 @@ function renderDashboardBudgets() {
             ${showWarning ? '<i data-lucide="alert-triangle" class="budget-warning-icon"></i>' : ''}
             ${category}
           </span>
-          <span class="budget-fraction">฿${spent.toFixed(0)} / ฿${limit.toFixed(0)}</span>
+          <span class="budget-fraction">฿${formatCurrency(spent)} / ฿${formatCurrency(limit)}</span>
         </div>
         <div class="budget-bar-outer">
           <div class="budget-bar-inner ${colorClass}" style="width: ${Math.min(percent, 100)}%"></div>
@@ -871,6 +877,18 @@ function drawCharts(balance) {
             text: 'Expenses by Category',
             color: '#f3f4f6',
             font: { family: 'Outfit', size: 12 }
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                let label = context.label || '';
+                if (label) label += ': ';
+                if (context.raw !== undefined) {
+                  label += '฿' + formatCurrency(context.raw);
+                }
+                return label;
+              }
+            }
           }
         }
       }
@@ -899,7 +917,15 @@ function drawCharts(balance) {
       maintainAspectRatio: false,
       scales: {
         x: { grid: { display: false }, ticks: { color: '#9ca3af' } },
-        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#9ca3af' } }
+        y: { 
+          grid: { color: 'rgba(255,255,255,0.05)' }, 
+          ticks: { 
+            color: '#9ca3af',
+            callback: function(value) {
+              return '฿' + value.toLocaleString('en-US');
+            }
+          } 
+        }
       },
       plugins: {
         legend: { display: false },
@@ -908,6 +934,18 @@ function drawCharts(balance) {
           text: 'Payment Distribution (Who Paid)',
           color: '#f3f4f6',
           font: { family: 'Outfit', size: 12 }
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              let label = context.dataset.label || '';
+              if (label) label += ': ';
+              if (context.raw !== undefined) {
+                label += '฿' + formatCurrency(context.raw);
+              }
+              return label;
+            }
+          }
         }
       }
     }
@@ -947,7 +985,7 @@ function renderTransactionsTable() {
     const paidByName = t.paidBy === 'User 1' ? state.config.user1Name : state.config.user2Name;
     const splitText = t.splitRatio === '50:50' 
       ? `Split 50:50` 
-      : `${state.config.user1Name}: ฿${t.user1Amount.toFixed(2)}<br>${state.config.user2Name}: ฿${t.user2Amount.toFixed(2)}`;
+      : `${state.config.user1Name}: ฿${formatCurrency(t.user1Amount)}<br>${state.config.user2Name}: ฿${formatCurrency(t.user2Amount)}`;
 
     let statusClass = "outstanding";
     if (t.status === 'Settled') statusClass = "settled";
@@ -959,7 +997,7 @@ function renderTransactionsTable() {
         <td class="tx-desc-col" title="${t.description}">${t.description || '-'}</td>
         <td><span class="db-mode-badge">${t.expenseType}</span></td>
         <td style="font-weight:600;">${paidByName}</td>
-        <td class="tx-amount-col">฿${t.amount.toFixed(2)}</td>
+        <td class="tx-amount-col">฿${formatCurrency(t.amount)}</td>
         <td class="tx-split-col">${splitText}</td>
         <td><span class="status-badge ${statusClass}">${t.status}</span></td>
         <td>
@@ -988,7 +1026,7 @@ function renderTransactionsTable() {
       const row = e.target.closest('tr');
       const id = row.dataset.id;
       const tx = state.transactions.find(t => t.id === id);
-      if (confirm(`Are you sure you want to delete this expense for "${tx.description}" (฿${tx.amount.toFixed(2)})?`)) {
+      if (confirm(`Are you sure you want to delete this expense for "${tx.description}" (฿${formatCurrency(tx.amount)})?`)) {
         // Optimistic UI update
         state.transactions = state.transactions.filter(t => t.id !== id);
         updateUIElements();
@@ -1042,11 +1080,11 @@ function renderBudgetsPage() {
       <div class="budget-viewer-card ${isExceeded ? 'border-danger' : ''}">
         <div class="budget-info-left">
           <span class="cat">${b.expenseType}</span>
-          <span class="limit">Limit: ฿${b.budgetAmount.toFixed(2)}</span>
+          <span class="limit">Limit: ฿${formatCurrency(b.budgetAmount)}</span>
         </div>
         <div style="text-align:right;">
           <div style="font-weight:700; color: ${isExceeded ? 'var(--color-danger)' : 'var(--color-success)'}">
-            Spent: ฿${spent.toFixed(2)}
+            Spent: ฿${formatCurrency(spent)}
           </div>
           <span style="font-size:0.75rem; color:var(--text-muted)">
             ${isExceeded ? 'Exceeded Limit!' : 'Within Budget'}
@@ -1116,7 +1154,7 @@ function renderSettingsPage() {
         </div>
         <div class="settlement-log-body">
           <i data-lucide="check-circle-2"></i>
-          <span>${fromName} paid <strong class="amount">฿${s.amount.toFixed(2)}</strong> to ${toName}</span>
+          <span>${fromName} paid <strong class="amount">฿${formatCurrency(s.amount)}</strong> to ${toName}</span>
         </div>
       </div>
     `;
@@ -1211,7 +1249,7 @@ function validateCustomSplit() {
   // Standard floating point margin checks
   if (diff > 0.01) {
     elements.splitCalcFeedback.style.display = 'block';
-    elements.splitCalcFeedback.textContent = `Sum of shares (฿${(u1Share + u2Share).toFixed(2)}) must equal total amount (฿${total.toFixed(2)}). Current diff: ฿${diff.toFixed(2)}`;
+    elements.splitCalcFeedback.textContent = `Sum of shares (฿${formatCurrency(u1Share + u2Share)}) must equal total amount (฿${formatCurrency(total)}). Current diff: ฿${formatCurrency(diff)}`;
     elements.modalTxSave.disabled = true;
   } else {
     elements.splitCalcFeedback.style.display = 'none';
@@ -1228,8 +1266,8 @@ function openSettlementModal() {
   elements.settleSummaryUser1Paid.textContent = `${state.config.user1Name} Paid (Outstanding)`;
   elements.settleSummaryUser2Paid.textContent = `${state.config.user2Name} Paid (Outstanding)`;
   
-  elements.settleMathUser1Paid.textContent = `฿${balance.user1PaidOutstanding.toFixed(2)}`;
-  elements.settleMathUser2Paid.textContent = `฿${balance.user2PaidOutstanding.toFixed(2)}`;
+  elements.settleMathUser1Paid.textContent = `฿${formatCurrency(balance.user1PaidOutstanding)}`;
+  elements.settleMathUser2Paid.textContent = `฿${formatCurrency(balance.user2PaidOutstanding)}`;
 
   if (balance.owesAmount <= 0.01) {
     elements.settleMathNetTransfer.textContent = "No outstanding balance";
