@@ -342,3 +342,141 @@ function inspectOldSheets() {
   });
 }
 
+/**
+ * Run this function in the Google Apps Script Editor to migrate all historical data
+ * from sheets 'MAR26', 'APR26', 'MAY26', and 'JUN26' into the 'Transactions' database.
+ */
+function migrateHistoryData() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var months = ['MAR26', 'APR26', 'MAY26', 'JUN26'];
+  
+  ensureSheetsExist(ss);
+  var targetSheet = ss.getSheetByName('Transactions');
+  
+  // Clear any existing transaction rows (except headers) to prevent double migration
+  var lastRow = targetSheet.getLastRow();
+  if (lastRow > 1) {
+    targetSheet.getRange(2, 1, lastRow - 1, 10).clearContent();
+  }
+  
+  var migratedCount = 0;
+  
+  months.forEach(function(month) {
+    var sourceSheet = ss.getSheetByName(month);
+    if (!sourceSheet) {
+      Logger.log("⚠️ Month sheet " + month + " not found.");
+      return;
+    }
+    
+    var rows = sourceSheet.getDataRange().getValues();
+    if (rows.length <= 1) return; // Only headers
+    
+    // Determine column indices based on header names (case-insensitive)
+    var headers = rows[0].map(function(h) { return String(h).trim().toLowerCase(); });
+    var dateIdx = headers.indexOf("date");
+    var expenseIdx = headers.indexOf("expense");
+    var costIdx = headers.indexOf("total cost");
+    var statusIdx = headers.indexOf("status");
+    var cppIdx = headers.indexOf("cost per person");
+    var paidByIdx = headers.indexOf("paid by");
+    var notesIdx = headers.indexOf("notes");
+    
+    for (var i = 1; i < rows.length; i++) {
+      var row = rows[i];
+      
+      // Basic validation: must have date, description, and cost
+      var rawDate = dateIdx !== -1 ? row[dateIdx] : "";
+      var expense = expenseIdx !== -1 ? row[expenseIdx] : "";
+      var totalCost = costIdx !== -1 ? parseFloat(row[costIdx]) : 0;
+      
+      if (!rawDate || !expense || isNaN(totalCost) || totalCost <= 0) {
+        continue;
+      }
+      
+      // 1. Format Date to YYYY-MM-DD
+      var dateStr = "";
+      if (rawDate instanceof Date) {
+        dateStr = Utilities.formatDate(rawDate, Session.getScriptTimeZone(), "yyyy-MM-dd");
+      } else {
+        dateStr = String(rawDate).substring(0, 10);
+      }
+      
+      // 2. Map Paid By (supports User 1/User 2 or display names like Alex/Sam)
+      var rawPaidBy = paidByIdx !== -1 ? String(row[paidByIdx]).trim().toLowerCase() : "";
+      var paidBy = "User 1"; // Default fallback
+      if (rawPaidBy.indexOf("user 2") !== -1 || rawPaidBy.indexOf("sam") !== -1 || rawPaidBy === "2") {
+        paidBy = "User 2";
+      } else if (rawPaidBy.indexOf("user 1") !== -1 || rawPaidBy.indexOf("alex") !== -1 || rawPaidBy === "1") {
+        paidBy = "User 1";
+      }
+      
+      // 3. Map Description and Notes
+      var notes = notesIdx !== -1 ? String(row[notesIdx]).trim() : "";
+      var description = String(expense).trim();
+      if (notes) {
+        description += " (" + notes + ")";
+      }
+      
+      // 4. Map Status
+      var rawStatus = statusIdx !== -1 ? String(row[statusIdx]).trim().toLowerCase() : "";
+      var status = "Outstanding";
+      if (rawStatus === "settled" || rawStatus === "paid" || rawStatus === "done") {
+        status = "Settled";
+      }
+      
+      // 5. Guess Category based on description keywords
+      var lowerDesc = description.toLowerCase();
+      var category = "Miscellaneous"; // Default
+      if (lowerDesc.indexOf("food") !== -1 || lowerDesc.indexOf("grocery") !== -1 || lowerDesc.indexOf("meal") !== -1 || lowerDesc.indexOf("eat") !== -1 || lowerDesc.indexOf("dinner") !== -1 || lowerDesc.indexOf("lunch") !== -1 || lowerDesc.indexOf("supermarket") !== -1 || lowerDesc.indexOf("restaurant") !== -1) {
+        category = "Food";
+      } else if (lowerDesc.indexOf("rent") !== -1 || lowerDesc.indexOf("room") !== -1 || lowerDesc.indexOf("apartment") !== -1) {
+        category = "Rent";
+      } else if (lowerDesc.indexOf("electric") !== -1 || lowerDesc.indexOf("water") !== -1 || lowerDesc.indexOf("utility") !== -1 || lowerDesc.indexOf("internet") !== -1 || lowerDesc.indexOf("wifi") !== -1 || lowerDesc.indexOf("power") !== -1 || lowerDesc.indexOf("bill") !== -1) {
+        category = "Utilities";
+      } else if (lowerDesc.indexOf("movie") !== -1 || lowerDesc.indexOf("netflix") !== -1 || lowerDesc.indexOf("game") !== -1 || lowerDesc.indexOf("entertainment") !== -1 || lowerDesc.indexOf("fun") !== -1 || lowerDesc.indexOf("play") !== -1 || lowerDesc.indexOf("major") !== -1) {
+        category = "Entertainment";
+      } else if (lowerDesc.indexOf("taxi") !== -1 || lowerDesc.indexOf("transport") !== -1 || lowerDesc.indexOf("bus") !== -1 || lowerDesc.indexOf("subway") !== -1 || lowerDesc.indexOf("fuel") !== -1 || lowerDesc.indexOf("gas") !== -1 || lowerDesc.indexOf("bts") !== -1 || lowerDesc.indexOf("mrt") !== -1 || lowerDesc.indexOf("grab") !== -1) {
+        category = "Transport";
+      }
+      
+      // 6. Map Split Ratio & Share Amounts
+      var costPerPerson = cppIdx !== -1 ? parseFloat(row[cppIdx]) : 0;
+      var splitRatio = "50:50";
+      var user1Amount = totalCost / 2;
+      var user2Amount = totalCost / 2;
+      
+      if (!isNaN(costPerPerson) && costPerPerson > 0 && Math.abs(costPerPerson - (totalCost / 2)) > 0.01) {
+        splitRatio = "Custom";
+        if (paidBy === "User 1") {
+          user1Amount = totalCost - costPerPerson;
+          user2Amount = costPerPerson;
+        } else {
+          user1Amount = costPerPerson;
+          user2Amount = totalCost - costPerPerson;
+        }
+      }
+      
+      var id = "tx_mig_" + month.toLowerCase() + "_" + i + "_" + Math.random().toString(36).substr(2, 5);
+      
+      // Append row to Transactions sheet
+      targetSheet.appendRow([
+        id,
+        dateStr,
+        paidBy,
+        totalCost,
+        category,
+        splitRatio,
+        user1Amount,
+        user2Amount,
+        description,
+        status
+      ]);
+      
+      migratedCount++;
+    }
+  });
+  
+  Logger.log("🎉 Successfully migrated " + migratedCount + " transactions into the 'Transactions' tab!");
+}
+
+
